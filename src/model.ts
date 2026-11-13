@@ -1,6 +1,16 @@
 import type { Dataset, Filters, Lang, SpellRecord, Tri, Version } from './types';
 import { castBucket } from './i18n';
 
+/** Prefix of Laserllama class filter values: "LL:Druid" = Laserllama's (alternate) Druid. */
+export const LL_PREFIX = 'LL:';
+
+/** Classes named in Laserllama spells (his alternate classes and his own: Magus, Psion, Shaman, Vessel). */
+export const laserllamaClasses = (data: Dataset) => [...new Set(data.spells.filter((s) => s.homebrew).flatMap((s) => s.classes))];
+
+/** Classes that have official spells (spell list or subclass spells). */
+export const officialClasses = (data: Dataset) =>
+  new Set(data.spells.filter((s) => !s.homebrew).flatMap((s) => [...s.classes, ...s.expanded, ...s.subclasses.map((x) => x.split(':')[0])]));
+
 export const norm = (s: string) => s.toLowerCase().replace(/ё/g, 'е').replace(/[’'`]/g, '').replace(/[^a-zа-я0-9]+/g, ' ').trim();
 
 export function buildRecords(data: Dataset): SpellRecord[] {
@@ -19,8 +29,11 @@ export function buildRecords(data: Dataset): SpellRecord[] {
 
 /** Classes that have no spell list of their own (their spells come from subclasses only). */
 export function classesWithoutList(data: Dataset): Set<string> {
-  const withList = new Set(data.spells.flatMap((v) => [...v.classes, ...v.expanded]));
-  return new Set(data.classes.map((c) => c.code).filter((c) => !withList.has(c)));
+  // A real class spell list has many spells; a class feature that grants one spell (Monk's Empty Body ->
+  // Astral Projection) does not make a spellcasting class, so such classes are handled via their subclasses.
+  const size = new Map<string, number>();
+  for (const v of data.spells) if (!v.homebrew) for (const c of [...v.classes, ...v.expanded]) size.set(c, (size.get(c) ?? 0) + 1);
+  return new Set([...officialClasses(data)].filter((c) => (size.get(c) ?? 0) < 10));
 }
 
 export const EMPTY_FILTERS: Filters = {
@@ -46,7 +59,11 @@ export function versionMatches(v: Version, f: Filters, noList: Set<string>): boo
   if (!any(f.cast, v.cast.map(castBucket))) return false;
   if (!any(f.damage, v.damage)) return false;
   if (f.classes.length) {
+    // Two separate class lists: official D&D classes ("Druid") use the official spell lists and match only official
+    // versions; Laserllama classes ("LL:Druid") use the compendium's class lists and match only Laserllama versions.
     const ok = f.classes.some((c) => {
+      if (c.startsWith(LL_PREFIX)) return v.homebrew && v.classes.includes(c.slice(LL_PREFIX.length));
+      if (v.homebrew) return false;
       const subs = f.subclasses.filter((s) => s.startsWith(`${c}:`));
       const inList = v.classes.includes(c) || (f.expanded && v.expanded.includes(c));
       if (subs.length) return inList || v.subclasses.some((s) => subs.includes(s));

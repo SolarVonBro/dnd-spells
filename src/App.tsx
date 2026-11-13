@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Dataset, Filters, Lang } from './types';
 import { WrongPasswordError, clearKey, getKey, loadDataset, login, writeCache } from './api';
 import { EMPTY_FILTERS, activeFilterCount, buildRecords, classesWithoutList, filterRecords } from './model';
-import { FiltersPanel } from './components/Filters';
+import { FilterBar } from './components/FilterBar';
 import { SpellList } from './components/SpellList';
 import { SpellDetail, type View } from './components/SpellDetail';
 import { Icon, Segmented } from './components/ui';
@@ -81,9 +81,8 @@ export function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lang, setLangState] = useState<Lang>(() => (store.getStr('dnd.lang', 'en') === 'ru' ? 'ru' : 'en'));
   const [spellLang, setSpellLang] = useState<Record<string, Lang>>({});
-  const [filters, setFiltersState] = useState<Filters>(() => ({ ...store.get('dnd.filters.v1', EMPTY_FILTERS), q: '' }));
+  const [filters, setFiltersState] = useState<Filters>(() => ({ ...store.get('dnd.filters.v2', EMPTY_FILTERS), q: '' }));
   const [route, setRoute] = useState(parseHash);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const pushed = useRef(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -118,7 +117,7 @@ export function App() {
   const matches = useMemo(() => filterRecords(records, filters, noList, lang), [records, filters, noList, lang]);
   const selected = route.id ? records.find((r) => r.id === route.id) ?? null : null;
 
-  const setFilters = (f: Filters) => { setFiltersState(f); store.set('dnd.filters.v1', { ...f, q: '' }); };
+  const setFilters = (f: Filters) => { setFiltersState(f); store.set('dnd.filters.v2', { ...f, q: '' }); };
   const setLang = (l: Lang) => { setLangState(l); setSpellLang({}); store.set('dnd.lang', l); };
 
   const open = (id: string, view: View = 'official') => {
@@ -136,19 +135,17 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       const typing = (e.target as HTMLElement)?.matches?.('input, textarea');
       if (e.key === '/' && !typing) { e.preventDefault(); searchRef.current?.focus(); }
-      if (e.key === 'Escape') {
-        if (filtersOpen) setFiltersOpen(false);
-        else if (route.id && !typing) close();
-      }
+      // Escape inside an open filter popover is handled by the popover itself.
+      if (e.key === 'Escape' && route.id && !typing && !document.querySelector('.pop')) close();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  // Lock background scroll while a full-screen layer is open on phones.
+  // Lock background scroll while the full-screen spell card is open on phones.
   useEffect(() => {
-    document.body.classList.toggle('layer-open', Boolean(filtersOpen || selected));
-  }, [filtersOpen, selected]);
+    document.body.classList.toggle('layer-open', Boolean(selected));
+  }, [selected]);
 
   const logout = () => { clearKey(); writeCache(null); setData(null); setExpired(false); setAuth('login'); };
 
@@ -158,10 +155,6 @@ export function App() {
   }
 
   const count = activeFilterCount(filters);
-  const filtersPanel = (
-    <FiltersPanel data={data} filters={filters} onChange={setFilters} subclassCounts={subclassCounts} noList={noList}
-      resultCount={matches.length} onClose={filtersOpen ? () => setFiltersOpen(false) : undefined} />
-  );
 
   return (
     <div class={`app${selected ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}`}>
@@ -174,15 +167,10 @@ export function App() {
           <input ref={searchRef} type="search" placeholder="Поиск по названию (EN / RU)" value={filters.q} aria-label="Поиск"
             onInput={(e) => { setFiltersState({ ...filters, q: (e.target as HTMLInputElement).value }); listRef.current?.scrollTo({ top: 0 }); }} />
         </div>
-        <button type="button" class="btn filter-btn" onClick={() => setFiltersOpen(true)} aria-label="Фильтры">
-          <Icon name="filter" size={18} /><span class="lbl">Фильтры</span>{count > 0 && <span class="badge">{count}</span>}
-        </button>
         <Segmented label="Язык заклинаний" value={lang} onChange={setLang}
           options={[{ value: 'en', label: 'EN', title: 'Тексты на английском (оригинал)' }, { value: 'ru', label: 'RU', title: 'Тексты на русском' }]} />
+        <FilterBar data={data} filters={filters} onChange={setFilters} subclassCounts={subclassCounts} noList={noList} resultCount={matches.length} />
       </header>
-
-      <aside class={`side${filtersOpen ? ' open' : ''}`} aria-label="Фильтры">{filtersPanel}</aside>
-      {filtersOpen && <div class="scrim" onClick={() => setFiltersOpen(false)} />}
 
       <div class="listcol" ref={listRef}>
         <div class="list-status">

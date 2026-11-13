@@ -41,6 +41,25 @@ await page.reload({ waitUntil: 'networkidle0' });
 await page.waitForSelector('.list .row', { timeout: 30000 }).catch(() => {});
 check(!(await page.$('#pw')) && Boolean(await page.$('.list .row')), 'password is remembered after reload');
 
+// Header filters: official Druid vs Laserllama Druid are separate class lists.
+const openFilter = async (label) => {
+  await page.evaluate((l) => [...document.querySelectorAll('.fbtn')].find((b) => b.querySelector('.fbtn-label').textContent.replace(/:$/, '') === l).click(), label);
+  await page.waitForSelector('.pop');
+};
+const pick = (section, text) => page.evaluate((sec, t) => {
+  const s = [...document.querySelectorAll('.pop .psec')].find((x) => !sec || x.querySelector('h4')?.textContent === sec);
+  [...s.querySelectorAll('.chip')].find((c) => c.textContent.trim() === t).click();
+}, section, text);
+const closePop = () => page.keyboard.press('Escape');
+const resultCount = async () => Number((await page.$eval('.list-status span', (e) => e.textContent)).match(/\d+/)[0]);
+await openFilter('Класс'); await pick('D&D 5e', 'Друид'); await closePop();
+await openFilter('Уровень'); await pick(null, 'Заговор'); await shot(page, '2b-level-popover'); await closePop();
+const officialDruid = await resultCount();
+await openFilter('Класс'); await pick('D&D 5e', 'Друид'); await pick('Laserllama', 'Друид'); await shot(page, '2c-class-popover'); await closePop();
+const llDruid = await resultCount();
+check(officialDruid === 18 && llDruid === 8, `class lists are separate: official Druid cantrips ${officialDruid} (expect 18), Laserllama Druid ${llDruid} (expect 8)`);
+await page.evaluate(() => [...document.querySelectorAll('.filterbar .reset')][0]?.click());
+
 await page.evaluate(() => { location.hash = '#/fireball'; });
 await page.waitForSelector('.detail h2');
 check((await page.$eval('.detail h2', (e) => e.textContent)) === 'Fireball', 'spell card opens');

@@ -39,7 +39,7 @@ function Classes({ data, v, lang }: { data: Dataset; v: Version; lang: Lang }) {
   return (
     <div class="classes">
       <div>
-        <span class="k">{lang === 'ru' ? 'Классы' : 'Classes'}:</span>{' '}
+        <span class="k">{v.homebrew ? (lang === 'ru' ? 'Классы Laserllama' : 'Laserllama classes') : (lang === 'ru' ? 'Классы' : 'Classes')}:</span>{' '}
         {v.classes.map(cls).join(', ')}
         {v.expanded.length > 0 && (
           <span class="expanded" title={lang === 'ru' ? 'Добавлено в списки классов в XGE, TCE, FTD или BMT' : 'Added to class lists in XGE, TCE, FTD or BMT'}>
