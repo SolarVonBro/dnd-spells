@@ -35,7 +35,7 @@ function Classes({ data, v, lang }: { data: Dataset; v: Version; lang: Lang }) {
     const s = data.subclasses.find((x) => x.id === id);
     return `${cls(id.split(':')[0])}: ${s ? (lang === 'ru' ? s.ru ?? s.en : s.en) : id}`;
   });
-  if (!v.classes.length && !v.expanded.length && !subs.length) return null;
+  if (!v.classes.length && !v.expanded.length && !subs.length && !v.llLists.length) return null;
   return (
     <div class="classes">
       <div>
@@ -47,6 +47,12 @@ function Classes({ data, v, lang }: { data: Dataset; v: Version; lang: Lang }) {
           </span>
         )}
       </div>
+      {v.llLists.length > 0 && (
+        <div>
+          <span class="k">{lang === 'ru' ? 'В списках классов Laserllama' : 'In Laserllama class lists'}:</span>{' '}
+          {v.llLists.map((c) => `${cls(c)}${lang === 'ru' ? ' (альт.)' : ' (alt.)'}`).join(', ')}
+        </div>
+      )}
       {subs.length > 0 && (
         <details>
           <summary>{lang === 'ru' ? 'Подклассы' : 'Subclasses'} ({subs.length})</summary>

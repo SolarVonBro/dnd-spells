@@ -132,21 +132,26 @@ const toRows = (data) => ({
     ...s.classes.map((c) => ({ spell_id: s.id, class_code: c, subclass_id: '', kind: 'base' })),
     ...s.expanded.map((c) => ({ spell_id: s.id, class_code: c, subclass_id: '', kind: 'expanded' })),
     ...s.subclasses.map((sc) => ({ spell_id: s.id, class_code: sc.split(':')[0], subclass_id: sc, kind: 'subclass' })),
+    // Laserllama class lists (from his class documents); subclass_id 'LL' keeps them apart from official lists.
+    ...s.llLists.map((c) => ({ spell_id: s.id, class_code: c, subclass_id: 'LL', kind: 'll-list' })),
   ]),
 });
 
 const fromRows = (r, version) => {
+  const llClassLists = JSON.parse(r.meta?.find((m) => m.key === 'll_class_lists')?.value ?? '[]');
   const links = new Map();
   for (const l of r.spell_classes) {
-    if (!links.has(l.spellId)) links.set(l.spellId, { classes: [], expanded: [], subclasses: [] });
+    if (!links.has(l.spellId)) links.set(l.spellId, { classes: [], expanded: [], subclasses: [], llLists: [] });
     const x = links.get(l.spellId);
     if (l.kind === 'base') x.classes.push(l.classCode);
     else if (l.kind === 'expanded') x.expanded.push(l.classCode);
+    else if (l.kind === 'll-list') x.llLists.push(l.classCode);
     else x.subclasses.push(l.subclassId);
   }
   const parse = (v) => (v == null ? null : typeof v === 'string' ? JSON.parse(v) : v);
   return {
     version,
+    llClassLists,
     sources: r.sources.map((s) => ({
       code: s.code, en: s.nameEn, ru: s.nameRu, homebrew: s.homebrew, year: s.year ?? null, url: s.url ?? null,
       sort: s.sort, ...(s.author ? { author: s.author } : {}), ...(s.notes ? { notes: parse(s.notes) } : {}),
@@ -154,13 +159,13 @@ const fromRows = (r, version) => {
     classes: r.classes.map((c) => ({ code: c.code, en: c.nameEn, ru: c.nameRu, homebrew: c.homebrew })).sort((a, b) => a.code.localeCompare(b.code)),
     subclasses: r.subclasses.map((s) => ({ id: s.id, class: s.classCode, en: s.nameEn, ru: s.nameRu, source: s.source })).sort((a, b) => a.id.localeCompare(b.id)),
     spells: r.spells.map((s) => {
-      const l = links.get(s.id) || { classes: [], expanded: [], subclasses: [] };
+      const l = links.get(s.id) || { classes: [], expanded: [], subclasses: [], llLists: [] };
       return {
         id: s.id, group: s.groupId, source: s.source, page: s.page ?? null, homebrew: s.homebrew, relation: s.relation ?? null,
         name: { en: s.nameEn, ru: s.nameRu ?? null }, level: s.level, school: s.school, ritual: s.ritual, concentration: s.concentration,
         components: { v: s.compV, s: s.compS, m: s.compM, r: s.compR, cost: s.materialCost, consumed: s.materialConsumed },
         cast: parse(s.castKeys), damage: parse(s.damageTypes),
-        classes: l.classes.sort(), expanded: l.expanded.sort(), subclasses: l.subclasses.sort(),
+        classes: l.classes.sort(), expanded: l.expanded.sort(), subclasses: l.subclasses.sort(), llLists: l.llLists.sort(),
         time: { en: s.timeEn, ru: s.timeRu ?? null }, range: { en: s.rangeEn, ru: s.rangeRu ?? null },
         duration: { en: s.durationEn, ru: s.durationRu ?? null }, comps: { en: s.componentsEn, ru: s.componentsRu ?? null },
         text: { en: s.textEn, ru: s.textRu ?? null },
@@ -209,19 +214,24 @@ export async function importDataset(driver, data) {
       await del('spell_classes', 'spell_id = $a AND class_code = $b AND subclass_id = $c', { $a: r.spellId, $b: r.classCode, $c: r.subclassId });
     }
   }
-  await upsert(driver, 'meta', [{ key: 'version', value: data.version }, { key: 'imported_at', value: new Date().toISOString() }]);
+  await upsert(driver, 'meta', [
+    { key: 'version', value: data.version },
+    { key: 'll_class_lists', value: JSON.stringify(data.llClassLists ?? []) },
+    { key: 'imported_at', value: new Date().toISOString() },
+  ]);
 }
 
 /* ---------------- read ---------------- */
 
 async function readTables(driver) {
-  const [sources, classes, subclasses, spells, spell_classes] = await exec(driver, `
+  const [sources, classes, subclasses, spells, spell_classes, meta] = await exec(driver, `
     SELECT * FROM sources;
     SELECT * FROM classes;
     SELECT * FROM subclasses;
     SELECT * FROM spells;
-    SELECT * FROM spell_classes;`);
-  return { sources, classes, subclasses, spells, spell_classes };
+    SELECT * FROM spell_classes;
+    SELECT * FROM meta;`);
+  return { sources, classes, subclasses, spells, spell_classes, meta };
 }
 
 export async function getVersion(driver) {

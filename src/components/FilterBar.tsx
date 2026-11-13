@@ -83,6 +83,10 @@ export function FilterBar({ data, filters: f, onChange, subclassCounts, noList, 
   const subclassOnly = official.filter((c) => noList.has(c)).sort(byRu);
   const llClasses = laserllamaClasses(data).sort(byRu);
   const officialSelected = f.classes.filter((c) => !c.startsWith(LL_PREFIX));
+  const docs = data.llClassLists ?? [];
+  const llNote = docs.length
+    ? `✓ — полный список заклинаний класса из документа Laserllama (${docs.map((d) => d.source.replace(/^Laserllama: /, '')).join(', ')}). У остальных — только заклинания из компендиума, где указан класс.`
+    : 'Списки заклинаний из компендиума Laserllama.';
 
   const toggleClass = (code: string) => {
     const on = f.classes.includes(code);
@@ -126,8 +130,16 @@ export function FilterBar({ data, filters: f, onChange, subclassCounts, noList, 
               Учитывать дополнения к спискам (XGE, TCE, FTD, BMT)
             </label>
           )}
-          <Section title="Laserllama" note="Классы Laserllama и списки заклинаний из его компендиума.">
-            {llClasses.map((c) => <Chip tone="ll" on={f.classes.includes(LL_PREFIX + c)} onClick={() => toggleClass(LL_PREFIX + c)} title={`${c} — Laserllama`}>{cls(c)}</Chip>)}
+          <Section title="Laserllama" note={llNote}>
+            {llClasses.map((c) => {
+              const doc = data.llClassLists?.find((l) => l.class === c);
+              return (
+                <Chip tone="ll" on={f.classes.includes(LL_PREFIX + c)} onClick={() => toggleClass(LL_PREFIX + c)}
+                  title={doc ? `Полный список из документа «${doc.source.replace(/^Laserllama: /, '')}» (${doc.spells})` : 'Только заклинания компендиума, где указан этот класс'}>
+                  {cls(c)}{doc ? ' ✓' : ''}
+                </Chip>
+              );
+            })}
           </Section>
         </>
       );

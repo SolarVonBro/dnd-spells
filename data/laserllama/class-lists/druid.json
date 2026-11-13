@@ -1,0 +1,575 @@
+{
+ "class": "Druid",
+ "source": "Laserllama: Alternate Druid",
+ "levels": {
+  "0": [
+   {
+    "name": "beckon air",
+    "ll": true
+   },
+   {
+    "name": "control flame",
+    "ll": true
+   },
+   {
+    "name": "create bonfire",
+    "book": "XGE"
+   },
+   {
+    "name": "druidcraft"
+   },
+   {
+    "name": "frostbite",
+    "book": "XGE"
+   },
+   {
+    "name": "guidance",
+    "ll": true
+   },
+   {
+    "name": "infestation",
+    "book": "XGE"
+   },
+   {
+    "name": "magic stone",
+    "book": "XGE"
+   },
+   {
+    "name": "mending"
+   },
+   {
+    "name": "mold earth",
+    "ll": true
+   },
+   {
+    "name": "poison spray",
+    "ll": true
+   },
+   {
+    "name": "primal savagery",
+    "ll": true
+   },
+   {
+    "name": "resistance",
+    "ll": true
+   },
+   {
+    "name": "shape water",
+    "ll": true
+   },
+   {
+    "name": "shillelagh"
+   },
+   {
+    "name": "thorn whip"
+   },
+   {
+    "name": "thunderclap",
+    "book": "XGE"
+   }
+  ],
+  "1": [
+   {
+    "name": "absorb elements",
+    "book": "XGE"
+   },
+   {
+    "name": "animal friendship"
+   },
+   {
+    "name": "beast bond",
+    "ll": true
+   },
+   {
+    "name": "charm person"
+   },
+   {
+    "name": "create snare",
+    "ll": true
+   },
+   {
+    "name": "create water",
+    "ll": true
+   },
+   {
+    "name": "cure wounds"
+   },
+   {
+    "name": "detect magic",
+    "ritual": true
+   },
+   {
+    "name": "detect poison & disease"
+   },
+   {
+    "name": "earth tremor",
+    "book": "XGE"
+   },
+   {
+    "name": "entangle"
+   },
+   {
+    "name": "faerie fire"
+   },
+   {
+    "name": "fog cloud"
+   },
+   {
+    "name": "goodberry",
+    "ll": true
+   },
+   {
+    "name": "healing word"
+   },
+   {
+    "name": "ice knife",
+    "book": "XGE"
+   },
+   {
+    "name": "jump",
+    "ll": true
+   },
+   {
+    "name": "longstrider"
+   },
+   {
+    "name": "protection from good & evil"
+   },
+   {
+    "name": "purify food & drink",
+    "ritual": true
+   },
+   {
+    "name": "speak with animals",
+    "ritual": true
+   },
+   {
+    "name": "thunderwave"
+   },
+   {
+    "name": "torrent",
+    "ll": true
+   }
+  ],
+  "2": [
+   {
+    "name": "animal messenger",
+    "ritual": true
+   },
+   {
+    "name": "augury"
+   },
+   {
+    "name": "aura of frost",
+    "ll": true
+   },
+   {
+    "name": "awaken plant",
+    "ll": true
+   },
+   {
+    "name": "barkskin",
+    "ll": true
+   },
+   {
+    "name": "beast sense",
+    "ritual": true
+   },
+   {
+    "name": "conjure beast",
+    "ll": true
+   },
+   {
+    "name": "continual flame"
+   },
+   {
+    "name": "darkvision"
+   },
+   {
+    "name": "dust devil",
+    "book": "XGE"
+   },
+   {
+    "name": "earthbind",
+    "book": "XGE"
+   },
+   {
+    "name": "elemental blade",
+    "ll": true
+   },
+   {
+    "name": "enhance ability"
+   },
+   {
+    "name": "enlarge/reduce"
+   },
+   {
+    "name": "flaming sphere"
+   },
+   {
+    "name": "gust of wind"
+   },
+   {
+    "name": "healing spirit",
+    "book": "XGE"
+   },
+   {
+    "name": "heat metal"
+   },
+   {
+    "name": "hold person"
+   },
+   {
+    "name": "locate creature",
+    "ritual": true,
+    "ll": true
+   },
+   {
+    "name": "locate object"
+   },
+   {
+    "name": "magic weapon",
+    "ll": true
+   },
+   {
+    "name": "moonbeam"
+   },
+   {
+    "name": "pass without trace",
+    "ll": true
+   },
+   {
+    "name": "restoration",
+    "ll": true
+   },
+   {
+    "name": "skywrite",
+    "book": "XGE",
+    "ritual": true
+   },
+   {
+    "name": "spike growth"
+   },
+   {
+    "name": "warding wind",
+    "book": "XGE"
+   }
+  ],
+  "3": [
+   {
+    "name": "aura of vitality"
+   },
+   {
+    "name": "call lightning"
+   },
+   {
+    "name": "conjure elemental",
+    "ll": true
+   },
+   {
+    "name": "conjure fey",
+    "ll": true
+   },
+   {
+    "name": "daylight"
+   },
+   {
+    "name": "dispel magic"
+   },
+   {
+    "name": "elemental weapon"
+   },
+   {
+    "name": "erupting earth",
+    "book": "XGE"
+   },
+   {
+    "name": "feign death",
+    "ritual": true
+   },
+   {
+    "name": "grasping vine",
+    "ll": true
+   },
+   {
+    "name": "meld into stone",
+    "ritual": true
+   },
+   {
+    "name": "plant growth"
+   },
+   {
+    "name": "protection from energy"
+   },
+   {
+    "name": "revivify"
+   },
+   {
+    "name": "sleet storm"
+   },
+   {
+    "name": "speak with plants"
+   },
+   {
+    "name": "tidal wave",
+    "book": "XGE"
+   },
+   {
+    "name": "wall of water",
+    "book": "XGE"
+   },
+   {
+    "name": "water breathing",
+    "ritual": true
+   },
+   {
+    "name": "water walk",
+    "ritual": true
+   },
+   {
+    "name": "wind wall"
+   }
+  ],
+  "4": [
+   {
+    "name": "accursed touch",
+    "ll": true
+   },
+   {
+    "name": "blight"
+   },
+   {
+    "name": "charm monster",
+    "book": "XGE"
+   },
+   {
+    "name": "control water"
+   },
+   {
+    "name": "divination"
+   },
+   {
+    "name": "dominate beast"
+   },
+   {
+    "name": "elemental bane",
+    "book": "XGE"
+   },
+   {
+    "name": "fire shield"
+   },
+   {
+    "name": "freedom of movement"
+   },
+   {
+    "name": "giant insect"
+   },
+   {
+    "name": "guardian of nature",
+    "book": "XGE"
+   },
+   {
+    "name": "hallucinatory terrain"
+   },
+   {
+    "name": "ice storm"
+   },
+   {
+    "name": "pillars of earth",
+    "ll": true
+   },
+   {
+    "name": "polymorph",
+    "ll": true
+   },
+   {
+    "name": "stone shape"
+   },
+   {
+    "name": "stoneskin"
+   },
+   {
+    "name": "wall of fire"
+   },
+   {
+    "name": "wall of ice",
+    "ll": true
+   },
+   {
+    "name": "wall of thorns",
+    "ll": true
+   },
+   {
+    "name": "watery sphere",
+    "book": "XGE"
+   }
+  ],
+  "5": [
+   {
+    "name": "antilife shell"
+   },
+   {
+    "name": "awaken"
+   },
+   {
+    "name": "conjure dragon",
+    "ll": true
+   },
+   {
+    "name": "conjure giant",
+    "ll": true
+   },
+   {
+    "name": "commune with nature",
+    "ritual": true
+   },
+   {
+    "name": "cone of cold"
+   },
+   {
+    "name": "contagion"
+   },
+   {
+    "name": "control winds",
+    "book": "XGE"
+   },
+   {
+    "name": "insect plague"
+   },
+   {
+    "name": "maelstrom",
+    "book": "XGE"
+   },
+   {
+    "name": "mass cure wounds"
+   },
+   {
+    "name": "planar binding"
+   },
+   {
+    "name": "reincarnate"
+   },
+   {
+    "name": "scrying"
+   },
+   {
+    "name": "transmute rock",
+    "book": "XGE"
+   },
+   {
+    "name": "tree stride"
+   },
+   {
+    "name": "wall of stone"
+   },
+   {
+    "name": "wrath of nature",
+    "book": "XGE"
+   }
+  ],
+  "6": [
+   {
+    "name": "druid grove",
+    "book": "XGE"
+   },
+   {
+    "name": "heal"
+   },
+   {
+    "name": "heroes' feast"
+   },
+   {
+    "name": "elemental avatar",
+    "ll": true
+   },
+   {
+    "name": "move earth"
+   },
+   {
+    "name": "primordial ward",
+    "book": "XGE"
+   },
+   {
+    "name": "sunbeam"
+   },
+   {
+    "name": "transport via plants"
+   },
+   {
+    "name": "wind walk"
+   }
+  ],
+  "7": [
+   {
+    "name": "fire storm"
+   },
+   {
+    "name": "mirage arcane"
+   },
+   {
+    "name": "plane shift"
+   },
+   {
+    "name": "regenerate"
+   },
+   {
+    "name": "reverse gravity"
+   },
+   {
+    "name": "symbol"
+   },
+   {
+    "name": "whirlwind",
+    "ll": true
+   }
+  ],
+  "8": [
+   {
+    "name": "antipathy",
+    "ll": true
+   },
+   {
+    "name": "animal shapes",
+    "ll": true
+   },
+   {
+    "name": "control weather"
+   },
+   {
+    "name": "earthquake"
+   },
+   {
+    "name": "feeblemind"
+   },
+   {
+    "name": "incendiary cloud"
+   },
+   {
+    "name": "sunburst"
+   },
+   {
+    "name": "tsunami"
+   }
+  ],
+  "9": [
+   {
+    "name": "foresight"
+   },
+   {
+    "name": "shapechange",
+    "ll": true
+   },
+   {
+    "name": "storm of vengeance",
+    "ll": true
+   },
+   {
+    "name": "true polymorph",
+    "ll": true
+   },
+   {
+    "name": "true resurrection"
+   }
+  ]
+ }
+}

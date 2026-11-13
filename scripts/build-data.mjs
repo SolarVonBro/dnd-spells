@@ -267,6 +267,33 @@ for (const k of Object.keys(translations)) {
   if (!versions.some((v) => v.id === k)) warn(`translation for unknown spell "${k}"`);
 }
 
+/* ---------------- Laserllama class spell lists (from his class documents) ---------------- */
+// data/laserllama/class-lists/<class>.json (scripts/extract_class_spell_list.py). An entry marked "ll" refers to the
+// compendium version of the spell, otherwise to the official one. Classes without a document keep the compendium's
+// "Classes" line as their list (handled in the site).
+const LIST_ALIAS = { 'protection from good and evil': 'Protection from Evil and Good' };
+const llByName = new Map(versions.filter((v) => v.homebrew).map((v) => [nameKey(v.name.en), v]));
+const officialByGroup = new Map(versions.filter((v) => !v.homebrew).map((v) => [v.group, v]));
+const llClassLists = [];
+for (const v of versions) v.llLists = [];
+const listDir = path.join(ROOT, 'data/laserllama/class-lists');
+for (const f of fs.existsSync(listDir) ? fs.readdirSync(listDir).filter((x) => x.endsWith('.json')).sort() : []) {
+  const L = JSON.parse(fs.readFileSync(path.join(listDir, f), 'utf8'));
+  let count = 0;
+  for (const [lvl, entries] of Object.entries(L.levels)) {
+    for (const e of entries) {
+      const key = nameKey(e.name.replace(/&/g, ' and '));
+      const v = e.ll ? llByName.get(key) : officialByGroup.get(refId(LIST_ALIAS[key] ?? key));
+      if (!v) throw new Error(`${f}: "${e.name}" (${e.ll ? 'Laserllama' : 'official'}) not found`);
+      if (v.level !== Number(lvl)) throw new Error(`${f}: "${e.name}" is listed at level ${lvl}, but ${v.id} is level ${v.level}`);
+      if (!v.llLists.includes(L.class)) v.llLists.push(L.class);
+      count++;
+    }
+  }
+  llClassLists.push({ class: L.class, source: L.source, spells: count });
+}
+for (const v of versions) v.llLists.sort();
+
 /* ---------------- validation ---------------- */
 // Header fields: collapse stray whitespace from sources ("1 реакция,  совершаемая ").
 const squash = (s) => (s == null ? null : s.replace(/\s+/g, ' ').trim());
@@ -303,6 +330,7 @@ const payload = {
   sources,
   classes: classCodes.sort().map((c) => ({ code: c, en: c, ru: CLASS_RU[c] ?? c, homebrew: !CLASS_RU[c] || ['Magus', 'Psion', 'Shaman', 'Vessel'].includes(c) })),
   subclasses: [...subclassIndex.values()].map((s) => ({ ...s, ru: s.ru ?? subRu[s.id] ?? null })).sort((a, b) => a.id.localeCompare(b.id)),
+  llClassLists,
   spells: versions.sort((a, b) => a.id.localeCompare(b.id)),
 };
 const version = crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 12);
@@ -311,6 +339,7 @@ fs.writeFileSync(path.join(ROOT, 'data/build/spells.json'), JSON.stringify({ ver
 
 console.log(`official: ${byId.size}, laserllama: ${llData.spells.length} (alt ${relations.alt}, same ${relations.same}, new ${relations.new}; not-marked-but-changed ${relations.changed})`);
 console.log(`versions: ${versions.length}, subclasses: ${subclassIndex.size}, version ${version}`);
+for (const l of llClassLists) console.log(`Laserllama class list ${l.class}: ${l.spells} spells (${l.source})`);
 console.log(`missing RU text: ${missingRu.length}${missingRu.length ? ` (${missingRu.filter((v) => !v.homebrew).map((v) => v.id).join(', ') || 'only Laserllama'})` : ''}`);
 console.log(`subclasses without RU name: ${missingSubRu.filter((s) => !subRu[s.id]).length}`);
 if (problems.length) console.log(`\n${problems.length} notes:\n- ${problems.join('\n- ')}`);

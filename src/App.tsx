@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Dataset, Filters, Lang } from './types';
 import { WrongPasswordError, clearKey, getKey, loadDataset, login, writeCache } from './api';
-import { EMPTY_FILTERS, activeFilterCount, buildRecords, classesWithoutList, filterRecords } from './model';
+import { EMPTY_FILTERS, activeFilterCount, buildRecords, filterContext, filterRecords } from './model';
 import { FilterBar } from './components/FilterBar';
 import { SpellList } from './components/SpellList';
 import { SpellDetail, type View } from './components/SpellDetail';
@@ -108,13 +108,13 @@ export function App() {
   }, []);
 
   const records = useMemo(() => (data ? buildRecords(data) : []), [data]);
-  const noList = useMemo(() => (data ? classesWithoutList(data) : new Set<string>()), [data]);
+  const ctx = useMemo(() => (data ? filterContext(data) : { noList: new Set<string>(), llDocLists: new Set<string>() }), [data]);
   const subclassCounts = useMemo(() => {
     const m = new Map<string, number>();
     data?.spells.forEach((s) => s.subclasses.forEach((id) => m.set(id, (m.get(id) ?? 0) + 1)));
     return m;
   }, [data]);
-  const matches = useMemo(() => filterRecords(records, filters, noList, lang), [records, filters, noList, lang]);
+  const matches = useMemo(() => filterRecords(records, filters, ctx, lang), [records, filters, ctx, lang]);
   const selected = route.id ? records.find((r) => r.id === route.id) ?? null : null;
 
   const setFilters = (f: Filters) => { setFiltersState(f); store.set('dnd.filters.v2', { ...f, q: '' }); };
@@ -169,7 +169,7 @@ export function App() {
         </div>
         <Segmented label="Язык заклинаний" value={lang} onChange={setLang}
           options={[{ value: 'en', label: 'EN', title: 'Тексты на английском (оригинал)' }, { value: 'ru', label: 'RU', title: 'Тексты на русском' }]} />
-        <FilterBar data={data} filters={filters} onChange={setFilters} subclassCounts={subclassCounts} noList={noList} resultCount={matches.length} />
+        <FilterBar data={data} filters={filters} onChange={setFilters} subclassCounts={subclassCounts} noList={ctx.noList} resultCount={matches.length} />
       </header>
 
       <div class="listcol" ref={listRef}>

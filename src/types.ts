@@ -19,6 +19,8 @@ export interface Version {
   classes: string[];
   expanded: string[];
   subclasses: string[];
+  /** Laserllama classes whose class document lists this exact version (e.g. ['Druid']). */
+  llLists: string[];
   time: L10n;
   range: L10n;
   duration: L10n;
@@ -34,8 +36,11 @@ export interface Source {
 export interface ClassInfo { code: string; en: string; ru: string; homebrew: boolean }
 export interface SubclassInfo { id: string; class: string; en: string; ru: string | null; source: string }
 
+export interface LlClassList { class: string; source: string; spells: number }
+
 export interface Dataset {
   version: string;
+  llClassLists: LlClassList[];
   sources: Source[];
   classes: ClassInfo[];
   subclasses: SubclassInfo[];

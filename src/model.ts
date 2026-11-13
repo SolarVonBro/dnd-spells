@@ -50,7 +50,20 @@ export function activeFilterCount(f: Filters) {
 const tri = (t: Tri, value: boolean) => t === 0 || (t === 1 ? value : !value);
 const any = <T,>(selected: T[], values: T[]) => selected.length === 0 || values.some((x) => selected.includes(x));
 
-export function versionMatches(v: Version, f: Filters, noList: Set<string>): boolean {
+/** Precomputed facts the class filter needs. */
+export interface FilterContext {
+  noList: Set<string>;
+  /** Laserllama classes that have a full spell list from their class document. */
+  llDocLists: Set<string>;
+}
+
+export const filterContext = (data: Dataset): FilterContext => ({
+  noList: classesWithoutList(data),
+  llDocLists: new Set((data.llClassLists ?? []).map((l) => l.class)),
+});
+
+export function versionMatches(v: Version, f: Filters, ctx: FilterContext): boolean {
+  const { noList } = ctx;
   if (f.levels.length && !f.levels.includes(v.level)) return false;
   if (f.schools.length && !f.schools.includes(v.school)) return false;
   if (f.sources.length && !f.sources.includes(v.source)) return false;
@@ -62,7 +75,11 @@ export function versionMatches(v: Version, f: Filters, noList: Set<string>): boo
     // Two separate class lists: official D&D classes ("Druid") use the official spell lists and match only official
     // versions; Laserllama classes ("LL:Druid") use the compendium's class lists and match only Laserllama versions.
     const ok = f.classes.some((c) => {
-      if (c.startsWith(LL_PREFIX)) return v.homebrew && v.classes.includes(c.slice(LL_PREFIX.length));
+      if (c.startsWith(LL_PREFIX)) {
+        const llClass = c.slice(LL_PREFIX.length);
+        // Full list from the class document (official and compendium spells); otherwise the compendium's class lines.
+        return ctx.llDocLists.has(llClass) ? v.llLists.includes(llClass) : v.homebrew && v.classes.includes(llClass);
+      }
       if (v.homebrew) return false;
       const subs = f.subclasses.filter((s) => s.startsWith(`${c}:`));
       const inList = v.classes.includes(c) || (f.expanded && v.expanded.includes(c));
@@ -76,13 +93,13 @@ export function versionMatches(v: Version, f: Filters, noList: Set<string>): boo
 
 export interface Match { record: SpellRecord; version: Version }
 
-export function filterRecords(records: SpellRecord[], f: Filters, noList: Set<string>, lang: Lang): Match[] {
+export function filterRecords(records: SpellRecord[], f: Filters, ctx: FilterContext, lang: Lang): Match[] {
   const q = norm(f.q);
   const out: Match[] = [];
   for (const r of records) {
     if (q && !q.split(' ').every((w) => r.search.includes(w))) continue;
     if (f.altOnly && r.ll?.relation !== 'alt') continue;
-    const version = r.versions.find((v) => versionMatches(v, f, noList));
+    const version = r.versions.find((v) => versionMatches(v, f, ctx));
     if (version) out.push({ record: r, version });
   }
   const name = (m: Match) => (lang === 'ru' ? m.version.name.ru ?? m.version.name.en : m.version.name.en);

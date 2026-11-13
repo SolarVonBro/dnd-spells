@@ -55,9 +55,10 @@ const resultCount = async () => Number((await page.$eval('.list-status span', (e
 await openFilter('Класс'); await pick('D&D 5e', 'Друид'); await closePop();
 await openFilter('Уровень'); await pick(null, 'Заговор'); await shot(page, '2b-level-popover'); await closePop();
 const officialDruid = await resultCount();
-await openFilter('Класс'); await pick('D&D 5e', 'Друид'); await pick('Laserllama', 'Друид'); await shot(page, '2c-class-popover'); await closePop();
+await openFilter('Класс'); await pick('D&D 5e', 'Друид'); await pick('Laserllama', 'Друид ✓'); await shot(page, '2c-class-popover'); await closePop();
 const llDruid = await resultCount();
-check(officialDruid === 18 && llDruid === 8, `class lists are separate: official Druid cantrips ${officialDruid} (expect 18), Laserllama Druid ${llDruid} (expect 8)`);
+// Laserllama's Alternate Druid document lists 17 cantrips (8 from the compendium + 9 official ones).
+check(officialDruid === 18 && llDruid === 17, `class lists are separate: official Druid cantrips ${officialDruid} (expect 18), Laserllama Druid ${llDruid} (expect 17)`);
 await page.evaluate(() => [...document.querySelectorAll('.filterbar .reset')][0]?.click());
 
 await page.evaluate(() => { location.hash = '#/fireball'; });

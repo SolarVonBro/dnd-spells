@@ -14,6 +14,11 @@
   Laserllama — извлечено из PDF (`scripts/extract_laserllama.py` → `data/laserllama/spells.en.json`);
   русский перевод Laserllama и Linked Glyphs — `data/translations/out/` (неофициальный).
 - `scripts/build-data.mjs` собирает всё в `data/build/spells.json` и проверяет, что текст не потерялся.
+- Классы в фильтре разделены: официальные классы D&D используют официальные списки заклинаний, классы Laserllama —
+  списки из его документов классов (`data/laserllama/class-lists/*.json`; туда входят и официальные заклинания).
+  Для класса Laserllama без такого документа используются строки «Classes» из компендиума.
+  Добавить документ класса:
+  `python -P -E scripts/extract_class_spell_list.py "<PDF>" Bard "Laserllama: Alternate Bard"`, затем `npm run data`.
 
 ## Команды
 
