@@ -1,0 +1,30 @@
+{
+  "name": "dnd-spells",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "fetch": "node scripts/fetch-sources.mjs",
+    "data": "node scripts/build-data.mjs && node scripts/encrypt-data.mjs",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "smoke": "node tests/smoke.mjs",
+    "set-password": "node scripts/set-password.mjs",
+    "translations:check": "node scripts/check-translations.mjs",
+    "deploy:yandex": "node scripts/deploy.mjs",
+    "db": "node scripts/db.mjs"
+  },
+  "dependencies": {
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "esbuild": "0.25.12",
+    "parse5": "^7.3.0",
+    "puppeteer-core": "^24.43.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.6",
+    "ydb-sdk": "5.11.1"
+  }
+}

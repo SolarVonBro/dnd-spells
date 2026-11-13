@@ -1,0 +1,18 @@
+node_modules/
+dist/
+build/
+.idea/
+*.log
+
+# secrets (password-derived key, hashes, tokens)
+.env.local
+
+# texts of official books in plain form: they are published only inside the encrypted src/data/spells.bin
+data/vendor/
+data/build/
+data/translations/input/
+data/translations/glossary.md
+
+# local source files of the owner
+Compendium of Spells _ GM Binder.pdf
+заклинания.json
