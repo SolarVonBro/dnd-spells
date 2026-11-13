@@ -151,8 +151,9 @@ kbd { font: 12px/1 ui-monospace, SFMono-Regular, Consolas, monospace; padding: 2
   .filter-btn { display: none; }
   .app.comparing { grid-template-columns: minmax(300px, 360px) 1fr; }
   .app.comparing .filter-btn { display: inline-flex; }
-  .app.comparing .side { position: fixed; z-index: 40; top: 0; bottom: 0; left: 0; width: 380px; transform: translateX(-102%); transition: transform .2s ease; box-shadow: var(--shadow); }
-  .app.comparing .side.open { transform: none; }
+  /* no slide animation when the layout switches into compare mode — only when the drawer is opened by the user */
+  .app.comparing .side { position: fixed; z-index: 40; top: 0; bottom: 0; left: 0; width: 380px; transform: translateX(-102%); transition: none; box-shadow: var(--shadow); }
+  .app.comparing .side.open { transform: none; transition: transform .2s ease; }
   .app.comparing .scrim { position: fixed; inset: 0; z-index: 35; background: rgba(0, 0, 0, .35); }
 }
 
