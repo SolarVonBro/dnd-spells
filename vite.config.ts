@@ -6,5 +6,6 @@ import preact from '@preact/preset-vite';
 export default defineConfig({
   base: './',
   plugins: [preact()],
-  build: { target: 'es2020', outDir: 'dist', emptyOutDir: true, assetsInlineLimit: 0 },
+  // pdfmake (~800 KB) is a separate chunk, loaded only when a spell list is exported to PDF.
+  build: { target: 'es2020', outDir: 'dist', emptyOutDir: true, assetsInlineLimit: 0, chunkSizeWarningLimit: 1000 },
 });

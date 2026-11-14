@@ -1,10 +1,11 @@
 // Downloads raw spell sources into data/vendor (idempotent, cached).
 //   5etools (English book text + metadata): data/vendor/5etools
+//   5etools class tables (spell slots etc.):  data/vendor/5etools/class
 //   ttg.club 5e14 (Russian translations):   data/vendor/ttg
 // Usage: node scripts/fetch-sources.mjs [--refresh]
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { OFFICIAL_SOURCES } from './lib/sources.mjs';
+import { OFFICIAL_SOURCES, CLASS_FILES } from './lib/sources.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const V5 = path.join(ROOT, 'data/vendor/5etools');
@@ -51,6 +52,7 @@ async function fetch5etools() {
   const files = [
     ...Object.values(OFFICIAL_SOURCES).map((s) => [`spells/${s.file}`, s.file]),
     ['generated/gendata-spell-source-lookup.json', 'gendata-spell-source-lookup.json'],
+    ...CLASS_FILES.map((c) => [`class/class-${c}.json`, `class/class-${c}.json`]),
   ];
   for (const [remote, local] of files) {
     const file = path.join(V5, local);

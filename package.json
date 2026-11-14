@@ -10,12 +10,14 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "smoke": "node tests/smoke.mjs",
+    "test:lists": "node tests/lists.mjs",
     "set-password": "node scripts/set-password.mjs",
     "translations:check": "node scripts/check-translations.mjs",
     "deploy:yandex": "node scripts/deploy.mjs",
     "db": "node scripts/db.mjs"
   },
   "dependencies": {
+    "pdfmake": "0.3.13",
     "preact": "^10.29.8"
   },
   "devDependencies": {

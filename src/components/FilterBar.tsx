@@ -154,10 +154,10 @@ export function FilterBar({ data, filters: f, onChange, subclassCounts, noList, 
       case 'source': return (
         <>
           <Section title="Книги D&D 5e (2014)">
-            {data.sources.filter((s) => !s.homebrew).map((s) => <Chip on={f.sources.includes(s.code)} onClick={() => set({ sources: toggle(f.sources, s.code) })} title={`${s.ru} (${s.en})`}>{SOURCE_SHORT[s.code] ?? s.code}</Chip>)}
+            {data.sources.filter((s) => !s.homebrew).map((s) => <Chip on={f.sources.includes(s.code)} onClick={() => set({ sources: toggle(f.sources, s.code) })} title={`${s.en} (${s.code})`}>{SOURCE_SHORT[s.code] ?? s.code}</Chip>)}
           </Section>
           <Section title="Хоумбрю">
-            {data.sources.filter((s) => s.homebrew).map((s) => <Chip tone="ll" on={f.sources.includes(s.code)} onClick={() => set({ sources: toggle(f.sources, s.code) })} title={s.ru}>{SOURCE_SHORT[s.code] ?? s.code}</Chip>)}
+            {data.sources.filter((s) => s.homebrew).map((s) => <Chip tone="ll" on={f.sources.includes(s.code)} onClick={() => set({ sources: toggle(f.sources, s.code) })} title={s.en}>{SOURCE_SHORT[s.code] ?? s.code}</Chip>)}
           </Section>
         </>
       );

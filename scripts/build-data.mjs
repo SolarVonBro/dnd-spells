@@ -3,6 +3,7 @@
 //   Russian official text  : ttg.club (data/vendor/ttg)
 //   Laserllama (EN)        : data/laserllama/spells.en.json (from the GM Binder PDF)
 //   Our translations (RU)  : data/translations/*.ru.json
+//   Class spellcasting tables: 5etools class files + data/laserllama/class-tables (scripts/lib/casters.mjs)
 // The same file is loaded into YDB (scripts/db.mjs) and served by the dev API.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,6 +13,7 @@ import { renderEntries, formatTime, formatRange, formatDuration, formatComponent
 import { sanitize } from './lib/sanitize.mjs';
 import { slugify, htmlToText, DAMAGE_TYPES, SCHOOLS } from './lib/text.mjs';
 import * as LL from './lib/laserllama.mjs';
+import { buildCasters } from './lib/casters.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const readJson = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, p), 'utf8'));
@@ -315,9 +317,9 @@ const missingSubRu = [...subclassIndex.values()].filter((s) => !s.ru);
 const classCodes = [...new Set(versions.flatMap((v) => [...v.classes, ...v.expanded, ...v.subclasses.map((x) => x.split(':')[0])]))];
 for (const c of classCodes) if (!CLASS_RU[c]) warn(`no Russian name for class ${c}`);
 const sources = [
-  ...Object.entries(OFFICIAL_SOURCES).map(([code, s], i) => ({ code, en: s.en, ru: s.ru, homebrew: false, year: s.year, url: null, sort: i })),
+  ...Object.entries(OFFICIAL_SOURCES).map(([code, s], i) => ({ code, en: s.en, homebrew: false, year: s.year, url: null, sort: i })),
   {
-    code: LASERLLAMA.code, en: LASERLLAMA.en, ru: LASERLLAMA.ru, homebrew: true, year: null, url: LASERLLAMA.url, sort: 100,
+    code: LASERLLAMA.code, en: LASERLLAMA.en, homebrew: true, year: null, url: LASERLLAMA.url, sort: 100,
     author: LASERLLAMA.author,
     notes: {
       en: llData.notes.filter((n) => n.html).map((n) => ({ title: n.title ?? null, html: sanitize(n.html) })),
@@ -326,11 +328,15 @@ const sources = [
   },
 ];
 const subRu = readJsonOpt('data/translations/subclasses.ru.json');
+const { casters, multiclassSlots } = buildCasters(ROOT);
+for (const c of casters) if (c.subclass && !subclassIndex.has(c.subclass)) warn(`caster table for unknown subclass ${c.subclass}`);
 const payload = {
   sources,
   classes: classCodes.sort().map((c) => ({ code: c, en: c, ru: CLASS_RU[c] ?? c, homebrew: !CLASS_RU[c] || ['Magus', 'Psion', 'Shaman', 'Vessel'].includes(c) })),
   subclasses: [...subclassIndex.values()].map((s) => ({ ...s, ru: s.ru ?? subRu[s.id] ?? null })).sort((a, b) => a.id.localeCompare(b.id)),
   llClassLists,
+  casters,
+  multiclassSlots,
   spells: versions.sort((a, b) => a.id.localeCompare(b.id)),
 };
 const version = crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 12);
@@ -340,6 +346,7 @@ fs.writeFileSync(path.join(ROOT, 'data/build/spells.json'), JSON.stringify({ ver
 console.log(`official: ${byId.size}, laserllama: ${llData.spells.length} (alt ${relations.alt}, same ${relations.same}, new ${relations.new}; not-marked-but-changed ${relations.changed})`);
 console.log(`versions: ${versions.length}, subclasses: ${subclassIndex.size}, version ${version}`);
 for (const l of llClassLists) console.log(`Laserllama class list ${l.class}: ${l.spells} spells (${l.source})`);
+console.log(`spellcasting tables: ${casters.map((c) => `${c.key} (${c.progression})`).join(', ')}`);
 console.log(`missing RU text: ${missingRu.length}${missingRu.length ? ` (${missingRu.filter((v) => !v.homebrew).map((v) => v.id).join(', ') || 'only Laserllama'})` : ''}`);
 console.log(`subclasses without RU name: ${missingSubRu.filter((s) => !subRu[s.id]).length}`);
 if (problems.length) console.log(`\n${problems.length} notes:\n- ${problems.join('\n- ')}`);

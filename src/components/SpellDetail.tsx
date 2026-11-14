@@ -4,6 +4,7 @@ import { FIELD_LABEL, levelSchool } from '../i18n';
 import { nameOf, textOf } from '../model';
 import { diffHtml } from '../diff';
 import { Icon, Segmented } from './ui';
+import { AddToList } from './Lists';
 
 export type View = 'official' | 'll' | 'compare';
 
@@ -21,8 +22,7 @@ interface Props {
 const FIELDS = ['time', 'range', 'comps', 'duration'] as const;
 
 function sourceLabel(data: Dataset, v: Version, lang: Lang) {
-  const s = data.sources.find((x) => x.code === v.source);
-  const name = s ? (lang === 'ru' ? s.ru : s.en) : v.source;
+  const name = data.sources.find((x) => x.code === v.source)?.en ?? v.source;
   return v.page ? `${name}, ${lang === 'ru' ? 'с.' : 'p.'} ${v.page}` : name;
 }
 
@@ -159,6 +159,7 @@ export function SpellDetail({ data, record, view, lang, onLang, onView, onBack, 
         {v.ritual && <span class="tag rit">{lang === 'ru' ? 'Ритуал' : 'Ritual'}</span>}
         {v.homebrew && <span class="tag src ll">Laserllama{v.relation ? '' : lang === 'ru' ? ' · новое' : ' · new'}</span>}
         {hasAlt && effective !== 'll' && <span class="tag alt">{lang === 'ru' ? 'Есть ALT-версия Laserllama' : 'Laserllama ALT version'}</span>}
+        <AddToList data={data} version={v} />
       </div>
 
       {hasAlt && (
@@ -179,7 +180,7 @@ export function SpellDetail({ data, record, view, lang, onLang, onView, onBack, 
       {v.homebrew && ll && (
         <p class="credit">
           {lang === 'ru' ? 'Хоумбрю: ' : 'Homebrew: '}
-          <a href={ll.url ?? '#'} target="_blank" rel="noopener noreferrer">{lang === 'ru' ? ll.ru : ll.en}</a>
+          <a href={ll.url ?? '#'} target="_blank" rel="noopener noreferrer">{ll.en}</a>
           {ll.author && <> · <a href={ll.author} target="_blank" rel="noopener noreferrer">laserllama</a></>}
           {lang === 'ru' && <> · перевод на русский — неофициальный</>}
         </p>

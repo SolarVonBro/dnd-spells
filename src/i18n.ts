@@ -56,11 +56,11 @@ export function levelSchool(level: number, school: string, ritual: boolean, lang
 export const levelLabel = (level: number) => (level === 0 ? 'Заговоры' : `${level} уровень`);
 export const levelShort = (level: number) => (level === 0 ? 'З' : String(level));
 
-// Short chip labels for sources (full names come from the dataset and are shown as tooltips).
+// Short chip labels for sources (book names are not translated; full names are shown as tooltips).
 export const SOURCE_SHORT: Record<string, string> = {
-  PHB: 'Книга игрока', XGE: 'Занатар', TCE: 'Таша', EGW: 'Дикогорье', FTD: 'Фицбан', SCC: 'Стриксхейвен',
-  BMT: 'Многие вещи', AAG: 'Астрал', AI: 'Корпорация', GGR: 'Равника', IDRotF: 'Ледяной Ветер', SatO: 'Сигил',
-  LLK: 'Квалиш', 'AitFR-AVT': 'Зелёная гробница', LL: 'Laserllama',
+  PHB: "Player's Handbook", XGE: "Xanathar's", TCE: "Tasha's", EGW: 'Wildemount', FTD: "Fizban's", SCC: 'Strixhaven',
+  BMT: 'Book of Many Things', AAG: 'Astral Adventurer', AI: 'Acquisitions Inc.', GGR: 'Ravnica', IDRotF: 'Icewind Dale',
+  SatO: 'Sigil', LLK: 'Kwalish', 'AitFR-AVT': 'Verdant Tomb', LL: 'Laserllama',
 };
 
 export const FIELD_LABEL = {

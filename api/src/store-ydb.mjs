@@ -113,7 +113,7 @@ export async function migrate(driver) {
 
 const toRows = (data) => ({
   sources: data.sources.map((s) => ({
-    code: s.code, name_en: s.en, name_ru: s.ru, homebrew: s.homebrew, year: s.year ?? null, url: s.url ?? null,
+    code: s.code, name_en: s.en, name_ru: null, homebrew: s.homebrew, year: s.year ?? null, url: s.url ?? null,
     author: s.author ?? null, sort: s.sort, notes: s.notes ? JSON.stringify(s.notes) : null,
   })),
   classes: data.classes.map((c) => ({ code: c.code, name_en: c.en, name_ru: c.ru, homebrew: c.homebrew })),
@@ -138,7 +138,8 @@ const toRows = (data) => ({
 });
 
 const fromRows = (r, version) => {
-  const llClassLists = JSON.parse(r.meta?.find((m) => m.key === 'll_class_lists')?.value ?? '[]');
+  const meta = (key, fallback) => JSON.parse(r.meta?.find((m) => m.key === key)?.value ?? fallback);
+  const llClassLists = meta('ll_class_lists', '[]');
   const links = new Map();
   for (const l of r.spell_classes) {
     if (!links.has(l.spellId)) links.set(l.spellId, { classes: [], expanded: [], subclasses: [], llLists: [] });
@@ -152,8 +153,10 @@ const fromRows = (r, version) => {
   return {
     version,
     llClassLists,
+    casters: meta('casters', '[]'),
+    multiclassSlots: meta('multiclass_slots', '[]'),
     sources: r.sources.map((s) => ({
-      code: s.code, en: s.nameEn, ru: s.nameRu, homebrew: s.homebrew, year: s.year ?? null, url: s.url ?? null,
+      code: s.code, en: s.nameEn, homebrew: s.homebrew, year: s.year ?? null, url: s.url ?? null,
       sort: s.sort, ...(s.author ? { author: s.author } : {}), ...(s.notes ? { notes: parse(s.notes) } : {}),
     })).sort((a, b) => a.sort - b.sort),
     classes: r.classes.map((c) => ({ code: c.code, en: c.nameEn, ru: c.nameRu, homebrew: c.homebrew })).sort((a, b) => a.code.localeCompare(b.code)),
@@ -217,6 +220,8 @@ export async function importDataset(driver, data) {
   await upsert(driver, 'meta', [
     { key: 'version', value: data.version },
     { key: 'll_class_lists', value: JSON.stringify(data.llClassLists ?? []) },
+    { key: 'casters', value: JSON.stringify(data.casters ?? []) },
+    { key: 'multiclass_slots', value: JSON.stringify(data.multiclassSlots ?? []) },
     { key: 'imported_at', value: new Date().toISOString() },
   ]);
 }

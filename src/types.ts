@@ -29,7 +29,7 @@ export interface Version {
 }
 
 export interface Source {
-  code: string; en: string; ru: string; homebrew: boolean; year: number | null; url: string | null; sort: number;
+  code: string; en: string; homebrew: boolean; year: number | null; url: string | null; sort: number;
   author?: string;
   notes?: { en: { title: string | null; html: string }[]; ru: { title: string | null; html: string }[] | null };
 }
@@ -38,9 +38,36 @@ export interface SubclassInfo { id: string; class: string; en: string; ru: strin
 
 export interface LlClassList { class: string; source: string; spells: number }
 
+/** Spellcasting table of a class (or of a casting subclass: Eldritch Knight, Arcane Trickster). */
+export interface CasterInfo {
+  /** 'Wizard', 'Fighter:Eldritch Knight' (subclass) or 'LL:Druid' (Laserllama class document). */
+  key: string;
+  class: string;
+  subclass: string | null;
+  homebrew: boolean;
+  source: string;
+  /** How the class adds to multiclass spell slots; 'pact' = Warlock's Pact Magic (separate slots). */
+  progression: 'full' | '1/2' | '1/3' | 'artificer' | 'pact';
+  ability: 'int' | 'wis' | 'cha';
+  /** [class level - 1][spell level - 1] */
+  slots: number[][] | null;
+  pact: { slots: number[]; level: number[] } | null;
+  /** Mystic Arcanum: spell level -> class level. */
+  arcanum: Record<string, number> | null;
+  cantrips: number[] | null;
+  known: number[] | null;
+  /** Wizard: minimum number of spells in the spellbook. */
+  spellbook: number[] | null;
+  /** Prepared spells: ability modifier + class level ('level') or + half the level ('half'). */
+  prepared: 'level' | 'half' | null;
+}
+
 export interface Dataset {
   version: string;
   llClassLists: LlClassList[];
+  casters: CasterInfo[];
+  /** PHB multiclass spellcaster table: [caster level - 1][spell level - 1] */
+  multiclassSlots: number[][];
   sources: Source[];
   classes: ClassInfo[];
   subclasses: SubclassInfo[];
