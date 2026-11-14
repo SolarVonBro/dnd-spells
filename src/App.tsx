@@ -10,6 +10,8 @@ import { SpellList, type Picker } from './components/SpellList';
 import { SpellTiles } from './components/SpellTiles';
 import { SpellDetail, type View } from './components/SpellDetail';
 import { ListEditor, ListsHome } from './components/Lists';
+import { CharacterView, CharactersHome } from './components/Characters';
+import { charactersReady, loadCharacters, useCharacters } from './characters';
 import { Icon, Segmented } from './components/ui';
 
 const store = {
@@ -22,8 +24,8 @@ interface Route {
   /** Open spell (group id). */
   id: string | null;
   view: View;
-  /** '#/@lists' - all character lists, '#/@list/<id>' - one list. */
-  page: 'main' | 'lists' | 'list';
+  /** '#/@lists' - all character lists, '#/@list/<id>' - one list, '#/@chars' - character sheets, '#/@char/<id>' - one sheet. */
+  page: 'main' | 'lists' | 'list' | 'chars' | 'char';
   listId: string | null;
 }
 
@@ -31,9 +33,12 @@ function parseHash(): Route {
   const [a, b] = decodeURIComponent(location.hash.replace(/^#\/?/, '')).split('/');
   if (a === '@lists') return { id: null, view: 'official', page: 'lists', listId: null };
   if (a === '@list' && b) return { id: null, view: 'official', page: 'list', listId: b };
+  if (a === '@chars') return { id: null, view: 'official', page: 'chars', listId: null };
+  if (a === '@char' && b) return { id: null, view: 'official', page: 'char', listId: b };
   return { id: a || null, view: b === 'll' || b === 'compare' ? b : 'official', page: 'main', listId: null };
 }
 const listHash = (id: string) => `#/@list/${encodeURIComponent(id)}`;
+const charHash = (id: string) => `#/@char/${encodeURIComponent(id)}`;
 
 /** Wide screens can switch the spell list to tiles grouped by level (2/3 of the screen, the card takes the rest). */
 const TILES_MEDIA = '(min-width: 1100px)';
@@ -78,7 +83,7 @@ function Login({ onDone, expired }: { onDone: (data: Dataset) => void; expired: 
   );
 }
 
-function Welcome({ data, total, onLogout, onLists }: { data: Dataset; total: number; onLogout: () => void; onLists: () => void }) {
+function Welcome({ data, total, onLogout, onLists, onChars }: { data: Dataset; total: number; onLogout: () => void; onLists: () => void; onChars: () => void }) {
   const ll = data.sources.find((s) => s.homebrew);
   const alt = data.spells.filter((s) => s.relation === 'alt').length;
   return (
@@ -91,6 +96,12 @@ function Welcome({ data, total, onLogout, onLists }: { data: Dataset; total: num
         <p><b>Списки заклинаний персонажей.</b> Выберите класс (можно несколько — мультикласс) и уровень: сайт посчитает ячейки,
           покажет подходящие заклинания и выгрузит список в PDF. Списки хранятся в этом браузере.</p>
         <button type="button" class="btn" onClick={onLists}><Icon name="book" size={18} /> Мои списки</button>
+      </div>
+      <div class="welcome-lists">
+        <p><b>Листы персонажей для печати.</b> Загрузите персонажа, экспортированного из Foundry VTT (D&amp;D 5e): сайт посчитает бонусы,
+          КД, хиты, атаки и ячейки, подставит переводы заклинаний и соберёт PDF-лист для игры за столом — с клетками для отметок
+          и дополнительными страницами под заклинания, снаряжение и заметки. Листы хранятся в этом браузере.</p>
+        <button type="button" class="btn" onClick={onChars}><Icon name="person" size={18} /> Листы персонажей</button>
       </div>
       <ul class="kbd-help">
         <li><kbd>/</kbd> — поиск</li>
@@ -128,11 +139,12 @@ export function App() {
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const lists = useLists();
+  const chars = useCharacters();
   // Picking spells for a character list: the spell list gets add/remove toggles and its own filters.
   const [picker, setPicker] = useState<{ listId: string; cls: string } | null>(null);
   const [pickFilters, setPickFilters] = useState<Filters>(EMPTY_FILTERS);
 
-  useEffect(() => { void loadLists(); }, []);
+  useEffect(() => { void loadLists(); void loadCharacters(); }, []);
 
   // Remembered key: load the dataset (local cache if current, otherwise decrypt the published file).
   useEffect(() => {
@@ -166,6 +178,7 @@ export function App() {
   const matches = useMemo(() => filterRecords(records, active, ctx, lang), [records, active, ctx, lang]);
   const selected = route.id ? recordMap.get(route.id) ?? null : null;
   const routeBook = route.page === 'list' && route.listId ? lists.find((b) => b.id === route.listId) ?? null : null;
+  const routeChar = route.page === 'char' && route.listId ? chars.find((c) => c.id === route.listId) ?? null : null;
   const pickBook = picker ? lists.find((b) => b.id === picker.listId) ?? null : null;
   const pickClass = picker && pickBook ? pickBook.classes.find((c) => c.cls === picker.cls) ?? null : null;
   useEffect(() => { if (picker && listsReady() && !pickClass) setPicker(null); }, [picker, pickClass]);
@@ -254,9 +267,13 @@ export function App() {
               listRef.current?.scrollTo({ top: 0 });
             }} />
         </div>
-        <button type="button" class={`btn lists-btn${route.page !== 'main' ? ' on' : ''}`} title="Мои списки заклинаний" aria-label="Мои списки заклинаний"
+        <button type="button" class={`btn lists-btn${route.page === 'lists' || route.page === 'list' ? ' on' : ''}`} title="Мои списки заклинаний" aria-label="Мои списки заклинаний"
           onClick={() => go('#/@lists', route.page === 'lists')}>
           <Icon name="book" size={18} /><span class="lbl">Мои списки</span>{lists.length > 0 && <span class="badge">{lists.length}</span>}
+        </button>
+        <button type="button" class={`btn lists-btn chars-btn${route.page === 'chars' || route.page === 'char' ? ' on' : ''}`} title="Листы персонажей" aria-label="Листы персонажей"
+          onClick={() => go('#/@chars', route.page === 'chars')}>
+          <Icon name="person" size={18} /><span class="lbl">Персонажи</span>{chars.length > 0 && <span class="badge">{chars.length}</span>}
         </button>
         {wide && (
           <Segmented label="Вид списка заклинаний" value={layout} onChange={setLayout}
@@ -311,7 +328,21 @@ export function App() {
           ) : <div class="loading"><div class="spinner" aria-label="Загрузка" /></div>
         ) : route.page === 'lists' ? (
           <ListsHome data={data} onOpen={(id) => go(listHash(id))} onBack={() => back('')} />
-        ) : <Welcome data={data} total={records.length} onLogout={logout} onLists={() => go('#/@lists')} />}
+        ) : route.page === 'char' ? (
+          routeChar ? (
+            <CharacterView key={routeChar.id} data={data} ch={routeChar}
+              onBack={() => back('#/@chars')}
+              onOpenSpell={(id, ll) => open(id, ll && recordMap.get(id)?.official ? 'll' : 'official')}
+              onOpenList={(id) => go(listHash(id))} />
+          ) : charactersReady() ? (
+            <div class="welcome">
+              <p>Лист не найден — возможно, он удалён или загружен в другом браузере.</p>
+              <button type="button" class="btn" onClick={() => go('#/@chars', true)}><Icon name="person" size={18} /> Листы персонажей</button>
+            </div>
+          ) : <div class="loading"><div class="spinner" aria-label="Загрузка" /></div>
+        ) : route.page === 'chars' ? (
+          <CharactersHome onOpen={(id) => go(charHash(id))} onBack={() => back('')} />
+        ) : <Welcome data={data} total={records.length} onLogout={logout} onLists={() => go('#/@lists')} onChars={() => go('#/@chars')} />}
       </main>
     </div>
   );

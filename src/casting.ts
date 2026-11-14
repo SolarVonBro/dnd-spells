@@ -62,14 +62,18 @@ export interface SlotSummary {
 }
 
 export function slotSummary(data: Dataset, book: SpellBook): SlotSummary {
-  const entries = book.classes.map((c) => ({ c, info: casterFor(data, c).info }));
+  return slotSummaryFor(book.classes.map((c) => ({ c, info: casterFor(data, c).info })), data.multiclassSlots);
+}
+
+/** Spell slots of classes with known spellcasting tables (PHB multiclass rules when several classes cast). */
+export function slotSummaryFor(entries: { c: CharClass; info: CasterInfo | null }[], multiclassSlots: number[][]): SlotSummary {
   const casting = entries.filter((e) => e.info && e.info.progression !== 'pact' && hasSlots(e.info, e.c.level));
   let slots = Array(9).fill(0);
   let casterLevel: number | null = null;
   if (casting.length === 1) slots = [...(at(casting[0].info!.slots, casting[0].c.level) ?? slots)];
   else if (casting.length > 1) {
     casterLevel = casting.reduce((n, e) => n + casterLevels(e.info!, e.c.level), 0);
-    if (casterLevel > 0) slots = [...(at(data.multiclassSlots, casterLevel) ?? slots)];
+    if (casterLevel > 0) slots = [...(at(multiclassSlots, casterLevel) ?? slots)];
   }
   const warlock = entries.find((e) => e.info?.progression === 'pact' && hasSlots(e.info, e.c.level));
   const pact = warlock ? {

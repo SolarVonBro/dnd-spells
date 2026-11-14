@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "smoke": "node tests/smoke.mjs",
     "test:lists": "node tests/lists.mjs",
+    "test:chars": "node tests/chars.mjs",
     "set-password": "node scripts/set-password.mjs",
     "translations:check": "node scripts/check-translations.mjs",
     "deploy:yandex": "node scripts/deploy.mjs",

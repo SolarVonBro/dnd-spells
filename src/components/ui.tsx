@@ -46,6 +46,7 @@ const ICONS: Record<string, string> = {
   check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z',
   download: 'M5 20h14v-2H5v2Zm7-3 5-5-1.4-1.4-2.6 2.6V4h-2v9.2l-2.6-2.6L7 12l5 5Z',
   upload: 'M5 20h14v-2H5v2Zm7-16-5 5 1.4 1.4L11 7.8V16h2V7.8l2.6 2.6L17 9l-5-5Z',
+  person: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5Z',
   trash: 'M7 21a2 2 0 0 1-2-2V7H4V5h5V4h6v1h5v2h-1v12a2 2 0 0 1-2 2H7Zm10-14H7v12h10V7ZM9 17h2V9H9v8Zm4 0h2V9h-2v8Z',
 };
 
