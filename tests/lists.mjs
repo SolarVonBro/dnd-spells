@@ -166,6 +166,24 @@ const fullPdf = await exportPdf('С описаниями');
 const shortPdf = await exportPdf('Таблица');
 await shot('l3-export');
 
+// Desktop: tiles layout (spells grouped by level, the card takes the rest of the screen).
+await clickText('.topbar .seg button', 'Плитки');
+await page.waitForSelector('.tiles .tile');
+const tileCount = await page.$$eval('.tiles .tile', (t) => t.length);
+const listed = Number((await page.$eval('.list-status span', (e) => e.textContent)).match(/\d+/)[0]);
+const heads = await page.$$eval('.tgroup-head span:first-child', (h) => h.map((x) => x.textContent));
+check(tileCount === listed && heads[0] === 'Заговоры' && heads.includes('9 уровень'), `tiles: ${tileCount} tiles in ${heads.length} level groups`);
+await page.click('.tiles .tile');
+await page.waitForSelector('.detail h2');
+const [colA, colB] = await page.evaluate(() => ['.listcol', '.detailcol'].map((s) => document.querySelector(s).getBoundingClientRect().width));
+check(colA / (colA + colB) > 0.6 && colA / (colA + colB) < 0.72, `tiles take about 2/3 of the width (${Math.round(colA)} / ${Math.round(colB)} px)`);
+await shot('l3b-tiles');
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForSelector('.tiles .tile', { timeout: 60000 });
+check(true, 'tiles layout is remembered after reload');
+await clickText('.topbar .seg button', 'Список');
+await page.waitForSelector('.list .row');
+
 // Phone layout: lists page is a full-screen layer; picking shows the spell list.
 // (switching to a mobile viewport reloads the page)
 await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });

@@ -7,6 +7,7 @@ import { casterFor, classLimits } from './casting';
 import { classLabel } from './listview';
 import { FilterBar } from './components/FilterBar';
 import { SpellList, type Picker } from './components/SpellList';
+import { SpellTiles } from './components/SpellTiles';
 import { SpellDetail, type View } from './components/SpellDetail';
 import { ListEditor, ListsHome } from './components/Lists';
 import { Icon, Segmented } from './components/ui';
@@ -33,6 +34,21 @@ function parseHash(): Route {
   return { id: a || null, view: b === 'll' || b === 'compare' ? b : 'official', page: 'main', listId: null };
 }
 const listHash = (id: string) => `#/@list/${encodeURIComponent(id)}`;
+
+/** Wide screens can switch the spell list to tiles grouped by level (2/3 of the screen, the card takes the rest). */
+const TILES_MEDIA = '(min-width: 1100px)';
+type Layout = 'list' | 'tiles';
+
+function useMedia(query: string) {
+  const [match, setMatch] = useState(() => matchMedia(query).matches);
+  useEffect(() => {
+    const mq = matchMedia(query);
+    const on = () => setMatch(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [query]);
+  return match;
+}
 
 function Login({ onDone, expired }: { onDone: (data: Dataset) => void; expired: boolean }) {
   const [pw, setPw] = useState('');
@@ -104,6 +120,9 @@ export function App() {
   const [spellLang, setSpellLang] = useState<Record<string, Lang>>({});
   const [filters, setFiltersState] = useState<Filters>(() => ({ ...store.get('dnd.filters.v2', EMPTY_FILTERS), q: '' }));
   const [route, setRoute] = useState(parseHash);
+  const [layout, setLayoutState] = useState<Layout>(() => (store.getStr('dnd.layout', 'list') === 'tiles' ? 'tiles' : 'list'));
+  const wide = useMedia(TILES_MEDIA);
+  const tiles = wide && layout === 'tiles';
   // Entries this tab pushed onto the history stack: "back" buttons use history.back() while there are any.
   const pushed = useRef(0);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -154,6 +173,7 @@ export function App() {
   const setFilters = (f: Filters) => { setFiltersState(f); store.set('dnd.filters.v2', { ...f, q: '' }); };
   const setActive = (f: Filters) => (picker ? setPickFilters(f) : setFilters(f));
   const setLang = (l: Lang) => { setLangState(l); setSpellLang({}); store.set('dnd.lang', l); };
+  const setLayout = (l: Layout) => { setLayoutState(l); store.set('dnd.layout', l); listRef.current?.scrollTo({ top: 0 }); };
 
   const go = (hash: string, replace = false) => {
     if (location.hash === hash || (!hash && !location.hash)) return;
@@ -220,7 +240,7 @@ export function App() {
   const pickCount = pickBook && picker ? pickBook.spells.filter((s) => s.by === picker.cls).length : 0;
 
   return (
-    <div class={`app${layer ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}`}>
+    <div class={`app${layer ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}${tiles ? ' layout-tiles' : ''}`}>
       <header class="topbar">
         <a class="brand" href="#" onClick={(e) => { e.preventDefault(); go(''); }} aria-label="Книга заклинаний">
           <span class="sigil" aria-hidden="true">✦</span><span class="brand-name">Книга заклинаний</span>
@@ -238,6 +258,10 @@ export function App() {
           onClick={() => go('#/@lists', route.page === 'lists')}>
           <Icon name="book" size={18} /><span class="lbl">Мои списки</span>{lists.length > 0 && <span class="badge">{lists.length}</span>}
         </button>
+        {wide && (
+          <Segmented label="Вид списка заклинаний" value={layout} onChange={setLayout}
+            options={[{ value: 'list', label: 'Список', title: 'Список слева, карточка справа' }, { value: 'tiles', label: 'Плитки', title: 'Плитки по уровням, карточка справа' }]} />
+        )}
         <Segmented label="Язык заклинаний" value={lang} onChange={setLang}
           options={[{ value: 'en', label: 'EN', title: 'Тексты на английском (оригинал)' }, { value: 'ru', label: 'RU', title: 'Тексты на русском' }]} />
         <FilterBar data={data} filters={active} onChange={setActive} subclassCounts={subclassCounts} noList={ctx.noList} resultCount={matches.length} />
@@ -258,8 +282,11 @@ export function App() {
           {count > 0 && <button type="button" class="link" onClick={() => setActive({ ...EMPTY_FILTERS, q: active.q })}>сбросить фильтры</button>}
         </div>
         {loadError && <p class="err">{loadError}</p>}
-        <SpellList matches={matches} lang={lang} selected={route.id} pick={pick}
-          onSelect={(id, v) => open(id, v === 'll' && recordMap.get(id)?.official ? 'll' : 'official')} />
+        {tiles
+          ? <SpellTiles matches={matches} lang={lang} selected={route.id} pick={pick}
+              onSelect={(id, v) => open(id, v === 'll' && recordMap.get(id)?.official ? 'll' : 'official')} />
+          : <SpellList matches={matches} lang={lang} selected={route.id} pick={pick}
+              onSelect={(id, v) => open(id, v === 'll' && recordMap.get(id)?.official ? 'll' : 'official')} />}
       </div>
 
       <main class="detailcol">

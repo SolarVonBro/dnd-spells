@@ -127,7 +127,7 @@ kbd { font: 12px/1 ui-monospace, SFMono-Regular, Consolas, monospace; padding: 2
 
 .listcol, .detailcol { min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .listcol { background: var(--panel); border-right: 1px solid var(--line); }
-.detailcol { background: var(--bg); }
+.detailcol { background: var(--bg); container: detail / inline-size; }
 
 @media (min-width: 720px) {
   .app { grid-template-columns: minmax(320px, 400px) 1fr; }
@@ -274,7 +274,7 @@ mark.d-ins { background: var(--ins-bg); color: inherit; border-radius: 3px; }
 .cmp-cols h3 { margin: 0 0 10px; font-family: var(--serif); font-size: 20px; }
 .cmp-cols h3 small { font-family: var(--font); font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 6px; }
 .cmp-cols .ll h3 small { color: var(--ll); }
-@media (max-width: 1000px) {
+@container detail (max-width: 760px) {
   .cmp-cols { grid-template-columns: 1fr; }
 }
 
@@ -294,8 +294,6 @@ mark.d-ins { background: var(--ins-bg); color: inherit; border-radius: 3px; }
   .detail-head h2 { font-size: 22px; }
   .meta { grid-template-columns: 1fr 1fr; }
   .spell-text { font-size: 16px; }
-  .cmp-meta { font-size: 13px; }
-  .cmp-meta tbody th { width: 26%; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -408,14 +406,53 @@ select.by { min-height: 30px; max-width: 130px; padding: 2px 6px; font-size: 12.
 
 @media (max-width: 719px) {
   .name-input { font-size: 20px; }
-  .crow { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; }
-  .crow select, .crow .hint { grid-column: 1 / -1; }
-  .crow .num input { width: 100%; }
-  .crow .icon-btn { grid-column: 3; }
-  .lrow { flex-wrap: wrap; }
-  .lrow-main { flex-basis: calc(100% - 90px); }
-  select.by { margin-left: 36px; }
   .addto { margin-left: 0; }
   .menu { right: auto; left: 0; }
 }
 .tag.warn { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); }
+
+/* ---------- tiles layout (wide screens): spells 2/3, card 1/3 ---------- */
+@media (min-width: 1100px) {
+  .app.layout-tiles { grid-template-columns: minmax(0, 2fr) minmax(420px, 1fr); }
+  /* side-by-side comparison needs a wider card */
+  .app.layout-tiles.comparing { grid-template-columns: minmax(0, 2fr) minmax(420px, 3fr); }
+  .app.layout-tiles .listcol { background: var(--bg); border-right: 0; }
+  .app.layout-tiles .detailcol { background: var(--panel); border-left: 1px solid var(--line); }
+  .app.layout-tiles .list-status { background: var(--bg); padding: 8px 24px; }
+  .app.layout-tiles .pick-banner { padding-left: 24px; padding-right: 24px; }
+}
+.tiles { padding: 0 24px 40px; }
+.tgroup-head { position: sticky; top: calc(var(--pick-h) + 37px); z-index: 1; display: flex; align-items: center; gap: 10px; margin: 0;
+  padding: 16px 0 10px; background: var(--bg); font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text); }
+.tgroup-head::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.tgroup-count { font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.tgrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.tgrid > li { position: relative; display: flex; min-width: 0; }
+.tile { flex: 1; min-width: 0; min-height: 104px; display: flex; flex-direction: column; gap: 1px; padding: 10px 12px; text-align: left;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); transition: border-color .12s, box-shadow .12s; }
+.tile:hover { border-color: color-mix(in srgb, var(--muted) 60%, var(--line)); box-shadow: 0 2px 10px rgba(40, 30, 10, .08); }
+.tile.sel { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
+.tile-name { font-weight: 650; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tile-other, .tile-meta { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-meta { margin-top: 2px; }
+.tile-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; padding-top: 8px; }
+.tgrid .pickable .tile { padding-right: 46px; }
+.tile-pick { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--panel); color: var(--accent); }
+.tile-pick:hover { background: var(--accent-soft); }
+.tgrid .picked .tile { border-color: var(--accent); }
+.tgrid .picked .tile-pick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* narrow card column: phones and the tiles layout (after the rules it overrides) */
+@container detail (max-width: 560px) {
+  .cmp-meta { font-size: 13px; }
+  .cmp-meta tbody th { width: 26%; }
+  .crow { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; }
+  .crow select, .crow .hint { grid-column: 1 / -1; }
+  .crow > select:first-child { grid-column: 1 / 3; grid-row: 1; }
+  .crow .num input { width: 100%; }
+  .crow .icon-btn { grid-column: 3; grid-row: 1; }
+  .lrow { flex-wrap: wrap; }
+  .lrow-main { flex-basis: calc(100% - 90px); }
+  select.by { margin-left: 36px; }
+}
