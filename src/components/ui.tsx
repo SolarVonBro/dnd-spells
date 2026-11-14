@@ -1,5 +1,7 @@
 import type { ComponentChildren } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Tri } from '../types';
+import { applyTheme, readTheme, type Theme } from '../theme';
 
 export function Chip(props: { on: boolean; onClick: () => void; children: ComponentChildren; title?: string; tone?: 'll' }) {
   return (
@@ -46,6 +48,10 @@ const ICONS: Record<string, string> = {
   check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z',
   download: 'M5 20h14v-2H5v2Zm7-3 5-5-1.4-1.4-2.6 2.6V4h-2v9.2l-2.6-2.6L7 12l5 5Z',
   upload: 'M5 20h14v-2H5v2Zm7-16-5 5 1.4 1.4L11 7.8V16h2V7.8l2.6 2.6L17 9l-5-5Z',
+  // Material Design icons (Apache 2.0): light_mode, dark_mode, contrast.
+  sun: 'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM2 13h2a1 1 0 0 0 0-2H2a1 1 0 0 0 0 2Zm18 0h2a1 1 0 0 0 0-2h-2a1 1 0 0 0 0 2ZM11 2v2a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0Zm0 18v2a1 1 0 0 0 2 0v-2a1 1 0 0 0-2 0ZM6 4.6a1 1 0 0 0-1.4 1.4l1 1.1A1 1 0 0 0 7.1 5.6L6 4.6Zm12.4 12.4A1 1 0 0 0 17 18.4l1 1a1 1 0 0 0 1.4-1.4l-1-1Zm1-11a1 1 0 0 0-1.4-1.4l-1 1A1 1 0 0 0 18.4 7l1-1ZM7.1 18.4A1 1 0 0 0 5.6 17l-1 1a1 1 0 0 0 1.4 1.4l1-1Z',
+  moon: 'M12 3a9 9 0 1 0 9 9c0-.5 0-.9-.1-1.4a5.4 5.4 0 0 1-9.8-3.1c0-1.8.9-3.4 2.3-4.4L12 3Z',
+  contrast: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm1-17.9a8 8 0 0 1 0 15.8V4.1Z',
   person: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5Z',
   trash: 'M7 21a2 2 0 0 1-2-2V7H4V5h5V4h6v1h5v2h-1v12a2 2 0 0 1-2 2H7Zm10-14H7v12h10V7ZM9 17h2V9H9v8Zm4 0h2V9h-2v8Z',
 };
@@ -53,3 +59,43 @@ const ICONS: Record<string, string> = {
 export const Icon = ({ name, size = 20 }: { name: keyof typeof ICONS | string; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d={ICONS[name]} /></svg>
 );
+
+const THEMES: { value: Theme; label: string; icon: string }[] = [
+  { value: 'auto', label: 'Как в системе', icon: 'contrast' },
+  { value: 'light', label: 'Светлая', icon: 'sun' },
+  { value: 'dark', label: 'Тёмная', icon: 'moon' },
+];
+
+/** Theme menu in the header: as in the system / light / dark. */
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(readTheme);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const down = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', down);
+    document.addEventListener('keydown', esc, true);
+    return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', esc, true); };
+  }, [open]);
+  const cur = THEMES.find((t) => t.value === theme)!;
+  return (
+    <div class="theme" ref={ref}>
+      <button type="button" class={`icon-btn theme-btn${open ? ' on' : ''}`} aria-haspopup="menu" aria-expanded={open}
+        title={`Тема: ${cur.label.toLowerCase()}`} aria-label={`Тема оформления: ${cur.label.toLowerCase()}`} onClick={() => setOpen(!open)}>
+        <Icon name={cur.icon} />
+      </button>
+      {open && (
+        <div class="menu theme-menu" role="menu">
+          {THEMES.map((t) => (
+            <button type="button" role="menuitemradio" aria-checked={t.value === theme} class={`menu-item${t.value === theme ? ' cur' : ''}`}
+              onClick={() => { applyTheme(t.value); setTheme(t.value); setOpen(false); }}>
+              <Icon name={t.icon} size={18} /> <span>{t.label}</span>{t.value === theme && <Icon name="check" size={16} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

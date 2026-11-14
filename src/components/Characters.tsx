@@ -184,8 +184,9 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
         </div>
       </header>
 
-      <PrintPanel data={data} ch={ch} sheet={s} />
-
+      <div class="char-layout">
+      <aside class="char-side"><PrintPanel data={data} ch={ch} sheet={s} /></aside>
+      <div class="char-main">
       {s.warnings.length > 0 && (
         <ul class="warnings">{s.warnings.map((w) => <li>{w}</li>)}</ul>
       )}
@@ -210,6 +211,8 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
         ))}
       </div>
 
+      <div class="char-cols">
+      <div>
       <h3 class="sec">Навыки <span class="sec-hint">— кружок: владение, ИНТ/МДР…: характеристика; нажмите, чтобы поправить</span></h3>
       <ul class="skills">
         {s.skills.map((k) => (
@@ -223,6 +226,8 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
         ))}
       </ul>
       {Object.keys({ ...(ch.skills ?? {}), ...(ch.skillAb ?? {}) }).length > 0 && <button type="button" class="link" onClick={() => set({ skills: {}, skillAb: {} })}>вернуть навыки как в файле</button>}
+      </div>
+      <div>
 
       <h3 class="sec">Атаки</h3>
       {s.attacks.length ? (
@@ -231,6 +236,24 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
           <tbody>{s.attacks.map((a) => <tr><td><b>{a.name}</b></td><td>{a.bonus}</td><td>{a.damage}</td><td class="muted">{a.notes}</td></tr>)}</tbody>
         </table>
       ) : <p class="empty-note">Оружия и атакующих заговоров нет.</p>}
+      {s.resources.length > 0 && (
+        <>
+          <h3 class="sec">Ограниченные умения <span class="sec-hint">— на листе клетки для отметок</span></h3>
+          <ul class="res">
+            {s.resources.map((r) => {
+              const auto = /^(spellcasting|использование заклинаний|колдовство|магия договора)$/i.test(r.name.trim());
+              return (
+                <li><label class="check">
+                  <input type="checkbox" checked={!r.hidden} onChange={(e) => toggleRes(r.id, !(e.target as HTMLInputElement).checked, auto)} />
+                  <span><b>{r.name}</b> — {r.max}{r.per ? ` / ${r.per}` : ''}</span>
+                </label></li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      </div>
+      </div>
 
       {(s.casters.length > 0 || s.spells.length > 0) && (
         <>
@@ -287,23 +310,6 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
         </>
       )}
 
-      {s.resources.length > 0 && (
-        <>
-          <h3 class="sec">Ограниченные умения <span class="sec-hint">— на листе у них клетки для отметок</span></h3>
-          <ul class="res">
-            {s.resources.map((r) => {
-              const auto = /^(spellcasting|использование заклинаний|колдовство|магия договора)$/i.test(r.name.trim());
-              return (
-                <li><label class="check">
-                  <input type="checkbox" checked={!r.hidden} onChange={(e) => toggleRes(r.id, !(e.target as HTMLInputElement).checked, auto)} />
-                  <span><b>{r.name}</b> — {r.max}{r.per ? ` / ${r.per}` : ''}</span>
-                </label></li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-
       <h3 class="sec">Умения и черты</h3>
       {s.features.map((g) => (
         <div class="fgroup">
@@ -350,6 +356,8 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
       </div>
       {msg && <p class="hint" role="status">{msg}</p>}
       <p class="hint">Файл: {ch.file}{ch.actor.sysVersion ? ` · dnd5e ${ch.actor.sysVersion}` : ''} · загружен {new Date(ch.imported).toLocaleString('ru-RU')}</p>
+      </div>
+      </div>
     </section>
   );
 }

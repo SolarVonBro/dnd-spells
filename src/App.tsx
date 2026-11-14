@@ -12,7 +12,7 @@ import { SpellDetail, type View } from './components/SpellDetail';
 import { ListEditor, ListsHome } from './components/Lists';
 import { CharacterView, CharactersHome } from './components/Characters';
 import { charactersReady, loadCharacters, useCharacters } from './characters';
-import { Icon, Segmented } from './components/ui';
+import { Icon, Segmented, ThemeToggle } from './components/ui';
 
 const store = {
   get<T>(k: string, d: T): T { try { const v = localStorage.getItem(k); return v ? { ...d as any, ...JSON.parse(v) } : d; } catch { return d; } },
@@ -234,8 +234,10 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  // Character sheets are pages of their own: the whole width, no spell list, search and filters.
+  const fullPage = !selected && (route.page === 'chars' || route.page === 'char');
   // Phones: the spell card and the list pages are a full-screen layer over the spell list (hidden while picking).
-  const layer = Boolean(selected) || (route.page !== 'main' && !picker);
+  const layer = !fullPage && (Boolean(selected) || (route.page !== 'main' && !picker));
   useEffect(() => {
     document.body.classList.toggle('layer-open', layer);
   }, [layer]);
@@ -253,12 +255,12 @@ export function App() {
   const pickCount = pickBook && picker ? pickBook.spells.filter((s) => s.by === picker.cls).length : 0;
 
   return (
-    <div class={`app${layer ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}${tiles ? ' layout-tiles' : ''}`}>
+    <div class={`app${layer ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}${tiles && !fullPage ? ' layout-tiles' : ''}${fullPage ? ' full-page' : ''}`}>
       <header class="topbar">
         <a class="brand" href="#" onClick={(e) => { e.preventDefault(); go(''); }} aria-label="Книга заклинаний">
           <span class="sigil" aria-hidden="true">✦</span><span class="brand-name">Книга заклинаний</span>
         </a>
-        <div class="search">
+        {!fullPage && <div class="search">
           <Icon name="search" size={18} />
           <input ref={searchRef} type="search" placeholder="Поиск по названию (EN / RU)" value={active.q} aria-label="Поиск"
             onInput={(e) => {
@@ -266,7 +268,7 @@ export function App() {
               if (picker) setPickFilters({ ...pickFilters, q }); else setFiltersState({ ...filters, q });
               listRef.current?.scrollTo({ top: 0 });
             }} />
-        </div>
+        </div>}
         <button type="button" class={`btn lists-btn${route.page === 'lists' || route.page === 'list' ? ' on' : ''}`} title="Мои списки заклинаний" aria-label="Мои списки заклинаний"
           onClick={() => go('#/@lists', route.page === 'lists')}>
           <Icon name="book" size={18} /><span class="lbl">Мои списки</span>{lists.length > 0 && <span class="badge">{lists.length}</span>}
@@ -275,13 +277,14 @@ export function App() {
           onClick={() => go('#/@chars', route.page === 'chars')}>
           <Icon name="person" size={18} /><span class="lbl">Персонажи</span>{chars.length > 0 && <span class="badge">{chars.length}</span>}
         </button>
-        {wide && (
+        {wide && !fullPage && (
           <Segmented label="Вид списка заклинаний" value={layout} onChange={setLayout}
             options={[{ value: 'list', label: 'Список', title: 'Список слева, карточка справа' }, { value: 'tiles', label: 'Плитки', title: 'Плитки по уровням, карточка справа' }]} />
         )}
-        <Segmented label="Язык заклинаний" value={lang} onChange={setLang}
-          options={[{ value: 'en', label: 'EN', title: 'Тексты на английском (оригинал)' }, { value: 'ru', label: 'RU', title: 'Тексты на русском' }]} />
-        <FilterBar data={data} filters={active} onChange={setActive} subclassCounts={subclassCounts} noList={ctx.noList} resultCount={matches.length} />
+        {!fullPage && <Segmented label="Язык заклинаний" value={lang} onChange={setLang}
+          options={[{ value: 'en', label: 'EN', title: 'Тексты на английском (оригинал)' }, { value: 'ru', label: 'RU', title: 'Тексты на русском' }]} />}
+        <ThemeToggle />
+        {!fullPage && <FilterBar data={data} filters={active} onChange={setActive} subclassCounts={subclassCounts} noList={ctx.noList} resultCount={matches.length} />}
       </header>
 
       <div class={`listcol${picker ? ' picking' : ''}`} ref={listRef}>

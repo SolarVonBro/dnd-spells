@@ -61,6 +61,33 @@ await (await page.$('.dropzone input[type=file]')).uploadFile(path.resolve(actor
 await page.waitForSelector('.char .stat-row', { timeout: 10000 });
 check((await page.$eval('.name-input', (e) => e.value)) === actor.name, `imported and opened: ${actor.name}`);
 await shot('c1-character');
+// A page of its own: the whole width, no spell list, search or filters.
+const layout = await page.evaluate(() => ({
+  list: getComputedStyle(document.querySelector('.listcol')).display,
+  detail: document.querySelector('.detailcol').getBoundingClientRect().width,
+  search: Boolean(document.querySelector('.topbar .search, .filterbar')),
+  side: document.querySelector('.char-side').getBoundingClientRect().left > document.querySelector('.char-main').getBoundingClientRect().left,
+}));
+check(layout.list === 'none' && layout.detail > 1300 && !layout.search && layout.side,
+  `character page is full-width with settings on the side (list ${layout.list}, ${Math.round(layout.detail)} px, search ${layout.search})`);
+
+// Theme: the header menu switches to dark, the choice survives a reload, "as in the system" removes it.
+const pickTheme = async (label) => {
+  await page.click('.theme-btn');
+  await page.waitForSelector('.theme-menu');
+  await clickText('.theme-menu .menu-item', label);
+};
+await pickTheme('Тёмная');
+const dark = await page.evaluate(() => ({ attr: document.documentElement.dataset.theme, bg: getComputedStyle(document.body).backgroundColor }));
+check(dark.attr === 'dark' && dark.bg === 'rgb(18, 19, 22)', `dark theme (${dark.attr}, ${dark.bg})`);
+await shot('c1-character-dark');
+await page.reload({ waitUntil: 'networkidle0' });
+await page.waitForSelector('.char .stat-row', { timeout: 60000 });
+check(await page.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'dark theme is kept after reload');
+await pickTheme('Светлая');
+check(await page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(245, 241, 232)'), 'light theme');
+await pickTheme('Как в системе');
+check(await page.evaluate(() => !document.documentElement.hasAttribute('data-theme') && localStorage.getItem('dnd.theme') === null), 'theme "as in the system" clears the choice');
 const stats = await text('.stat');
 console.log('     stats:', stats.join(' | '));
 const abil = await text('.abil');
