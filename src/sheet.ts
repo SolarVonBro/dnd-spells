@@ -363,7 +363,8 @@ export function siteClass(data: Dataset, cls: FItem, sub: FItem | null): { code:
 }
 
 const zeros = () => Array(9).fill(0);
-function genericCaster(progression: string, ability: Ability, data: Dataset): CasterInfo | null {
+/** Spellcasting table by progression ('full', 'half', 'third', 'artificer', 'pact') for classes the site has no table for. */
+export function genericCaster(progression: string, ability: Ability, data: Dataset): CasterInfo | null {
   const table = data.multiclassSlots;
   const row = (cl: number) => (cl > 0 ? [...table[Math.min(20, cl) - 1]] : zeros());
   const prog = { full: 'full', half: '1/2', third: '1/3', artificer: 'artificer', pact: 'pact' }[progression] as CasterInfo['progression'] | undefined;

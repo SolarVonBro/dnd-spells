@@ -51,8 +51,11 @@ export interface Character {
   actor: FActor;
   /** Data of a character created on the site (no Foundry file): the sheet is computed from it. */
   manual?: ManualData;
-  /** Portrait: a JPEG data URL, reduced in the browser. */
+  /** Portrait: a cropped 4:5 JPEG data URL (480×600), made in the browser. */
   photo?: string;
+  /** The uploaded picture (reduced to 1024 px) and the crop, to crop again later. */
+  photoSrc?: string;
+  photoCrop?: { cx: number; cy: number; zoom: number };
   /** Name of the imported file ('' for a character created on the site). */
   file: string;
   imported: number;

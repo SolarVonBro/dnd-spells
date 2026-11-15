@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { OFFICIAL_SOURCES, LASERLLAMA, TTG_TO_5ET } from './lib/sources.mjs';
+import { OFFICIAL_SOURCES, LASERLLAMA, TTG_TO_5ET, CLASS_FILES } from './lib/sources.mjs';
 import { renderEntries, formatTime, formatRange, formatDuration, formatComponents, renderPlain } from './lib/render5e.mjs';
 import { sanitize } from './lib/sanitize.mjs';
 import { slugify, htmlToText, DAMAGE_TYPES, SCHOOLS } from './lib/text.mjs';
@@ -328,12 +328,24 @@ const sources = [
   },
 ];
 const subRu = readJsonOpt('data/translations/subclasses.ru.json');
+// All subclasses of the 2014 classes from official books (character creation), not only those with spell lists.
+const subclassesAll = [];
+for (const file of CLASS_FILES) {
+  for (const s of readJson(`data/vendor/5etools/class/class-${file}.json`).subclass ?? []) {
+    if (s.classSource !== (s.className === 'Artificer' ? 'TCE' : 'PHB') || !SUBCLASS_BOOKS.has(s.source)) continue;
+    const id = `${s.className}:${s.shortName}`;
+    if (subclassesAll.some((x) => x.id === id)) continue;
+    subclassesAll.push({ id, class: s.className, en: s.name, ru: subclassIndex.get(id)?.ru ?? subRu[id] ?? null, source: s.source });
+  }
+}
+for (const s of subclassesAll) if (!s.ru) warn(`no Russian name for subclass ${s.id}`);
 const { casters, multiclassSlots } = buildCasters(ROOT);
 for (const c of casters) if (c.subclass && !subclassIndex.has(c.subclass)) warn(`caster table for unknown subclass ${c.subclass}`);
 const payload = {
   sources,
   classes: classCodes.sort().map((c) => ({ code: c, en: c, ru: CLASS_RU[c] ?? c, homebrew: !CLASS_RU[c] || ['Magus', 'Psion', 'Shaman', 'Vessel'].includes(c) })),
   subclasses: [...subclassIndex.values()].map((s) => ({ ...s, ru: s.ru ?? subRu[s.id] ?? null })).sort((a, b) => a.id.localeCompare(b.id)),
+  subclassesAll: subclassesAll.sort((a, b) => a.id.localeCompare(b.id)),
   llClassLists,
   casters,
   multiclassSlots,
@@ -344,7 +356,7 @@ fs.mkdirSync(path.join(ROOT, 'data/build'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'data/build/spells.json'), JSON.stringify({ version, ...payload }));
 
 console.log(`official: ${byId.size}, laserllama: ${llData.spells.length} (alt ${relations.alt}, same ${relations.same}, new ${relations.new}; not-marked-but-changed ${relations.changed})`);
-console.log(`versions: ${versions.length}, subclasses: ${subclassIndex.size}, version ${version}`);
+console.log(`versions: ${versions.length}, subclasses: ${subclassIndex.size} with spells, ${subclassesAll.length} in all, version ${version}`);
 for (const l of llClassLists) console.log(`Laserllama class list ${l.class}: ${l.spells} spells (${l.source})`);
 console.log(`spellcasting tables: ${casters.map((c) => `${c.key} (${c.progression})`).join(', ')}`);
 console.log(`missing RU text: ${missingRu.length}${missingRu.length ? ` (${missingRu.filter((v) => !v.homebrew).map((v) => v.id).join(', ') || 'only Laserllama'})` : ''}`);

@@ -29,4 +29,4 @@ export const TTG_TO_5ET = { EGtW: 'EGW', SCAG: 'TCE' };
 
 // 5etools class files (data/vendor/5etools/class) with spell slot tables. Fighter and Rogue are here for their
 // Eldritch Knight and Arcane Trickster subclasses.
-export const CLASS_FILES = ['artificer', 'bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'fighter', 'rogue'];
+export const CLASS_FILES = ['artificer', 'bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'fighter', 'rogue', 'barbarian', 'monk'];

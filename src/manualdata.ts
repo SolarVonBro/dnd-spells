@@ -4,15 +4,30 @@
 export type Ab = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
 export const ABS: Ab[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 
+/** A class typed in by the player: name, saving throws, spellcasting, proficiencies. */
+export interface CustomClass {
+  name: string;
+  saves: Ab[];
+  caster: 'none' | 'full' | 'half' | 'third' | 'artificer' | 'pact';
+  ability: 'int' | 'wis' | 'cha';
+  armor: string;
+  weapons: string;
+}
+
 export interface ManualClass {
-  /** Site class code: 'Wizard', 'LL:Druid' (Laserllama). */
+  /** Site class code: 'Wizard', 'LL:Druid' (Laserllama), 'custom:<id>' (typed in, see `custom`). */
   cls: string;
   level: number;
-  /** Subclass id ('Cleric:Life') or null. */
+  /** Subclass id ('Cleric:Life', 'LL:Rogue:Burglar'), 'custom' (typed in, see `subName`) or null. */
   sub: string | null;
+  subName?: string;
   /** Hit die faces when the class is unknown or the player changes it (null: by the class). */
   hd: number | null;
+  custom?: CustomClass;
 }
+
+export const isCustom = (cls: string) => cls.startsWith('custom:');
+export const newCustomClass = (): CustomClass => ({ name: '', saves: [], caster: 'none', ability: 'int', armor: '', weapons: '' });
 export interface ManualSpell { id: string; v: 'o' | 'l' }
 export interface ManualWeapon {
   id: string;
@@ -138,10 +153,54 @@ export const CLASS_RULES: Record<string, ClassRules> = {
     skills: { n: 2, from: ['arc', 'his', 'ins', 'inv', 'med', 'rel'] }, multi: { armor: [], weapons: [], note: '' } },
 };
 
-/** Rules of a site class: Laserllama's alternate classes keep the official class's hit die, saves and proficiencies. */
+/* ---------------- Laserllama classes with documents (the player's GM Binder PDFs) ---------------- */
+
+export interface LlClass { en: string; ru: string; doc: string; rules: ClassRules; subclasses: { id: string; en: string; ru: string }[] }
+const llSubs = (cls: string, list: [string, string][]) => list.map(([en, ru]) => ({ id: `LL:${cls}:${en.replace(/^(Circle of (the )?|Academy of )/, '')}`, en, ru }));
+
+export const LL_CLASSES: Record<string, LlClass> = {
+  Druid: {
+    en: 'Alternate Druid', ru: 'Друид', doc: 'Alternate Druid',
+    rules: { hd: 8, saves: ['int', 'wis'], armor: [LIGHT, MEDIUM, SHIELDS], weapons: [SIMPLE, 'скимитары'], tools: 'набор травника',
+      skills: { n: 2, from: ['arc', 'ani', 'ins', 'med', 'nat', 'prc', 'rel', 'sur'] }, multi: { armor: [LIGHT, MEDIUM, SHIELDS], weapons: [], note: '' } },
+    subclasses: llSubs('Druid', [['Circle of Decay', 'Круг Разложения'], ['Circle of the Land', 'Круг Земли'], ['Circle of the Moon', 'Круг Луны'], ['Circle of the Tides', 'Круг Приливов']]),
+  },
+  Rogue: {
+    en: 'Alternate Rogue', ru: 'Плут', doc: 'Alternate Rogue, Alternate Rogue: Expanded',
+    rules: { hd: 8, saves: ['dex', 'int'], armor: [LIGHT], weapons: [SIMPLE, 'духовые трубки', 'ручные арбалеты', 'скимитары', 'короткие мечи', 'рапиры', 'кнуты'],
+      tools: 'один набор инструментов на выбор',
+      skills: { n: 4, from: ['acr', 'ath', 'dec', 'ins', 'itm', 'inv', 'prc', 'prf', 'per', 'slt', 'ste'] },
+      multi: { armor: [LIGHT], weapons: [], note: 'один навык из списка плута, один набор инструментов' } },
+    subclasses: llSubs('Rogue', [
+      ['Arcane Trickster', 'Мистический Ловкач'], ['Assassin', 'Убийца'], ['Burglar', 'Взломщик'], ['Investigator', 'Следователь'],
+      ['Mastermind', 'Комбинатор'], ['Phantom', 'Фантом'], ['Psiknife', 'Псиклинок'], ['Scout', 'Разведчик'], ['Swashbuckler', 'Дуэлянт'],
+      ['Acrobat', 'Акробат'], ['Avenger', 'Мститель'], ['Bloodknife', 'Кровавый клинок'], ['Gambler', 'Игрок'], ['Ruffian', 'Громила'],
+      ['Saboteur', 'Диверсант'], ['Seeker', 'Искатель'], ['Skinchanger', 'Перевёртыш'], ['Surgeon', 'Хирург'],
+    ]),
+  },
+  Warlord: {
+    en: 'Warlord', ru: 'Военачальник', doc: 'The Warlord Class',
+    rules: { hd: 8, saves: ['wis', 'cha'], armor: [LIGHT, MEDIUM, SHIELDS], weapons: [SIMPLE, 'ручные арбалеты', 'длинные луки', 'длинные мечи', 'рапиры', 'скимитары', 'короткие мечи'],
+      tools: 'один игровой набор на выбор', skills: { n: 2, from: ['ath', 'dec', 'his', 'ins', 'itm', 'inv', 'per'] },
+      multi: { armor: [LIGHT, MEDIUM, SHIELDS], weapons: [SIMPLE], note: 'один игровой набор' } },
+    subclasses: llSubs('Warlord', [['Academy of Chivalry', 'Академия Рыцарства'], ['Academy of Ferocity', 'Академия Свирепости'], ['Academy of Schemes', 'Академия Интриг'],
+      ['Academy of Skalds', 'Академия Скальдов'], ['Academy of Tactics', 'Академия Тактики']]),
+  },
+};
+
+/** Rules of a class: a Laserllama class document, else the official class (Laserllama's alternate classes keep its hit die,
+ *  saves and proficiencies); null for a typed-in class or an unknown homebrew class. */
 export function classRules(cls: string): ClassRules | null {
+  if (isCustom(cls)) return null;
+  if (cls.startsWith('LL:')) {
+    const ll = LL_CLASSES[cls.slice(3)];
+    if (ll) return ll.rules;
+  }
   return CLASS_RULES[cls.replace(/^LL:/, '')] ?? null;
 }
+
+/** Saving throws a class gives as the first class. */
+export const classSaves = (c: ManualClass): Ab[] => (c.custom ? c.custom.saves : classRules(c.cls)?.saves ?? []);
 
 /** Ability score improvements: class levels that give them (PHB). */
 export function asiLevels(cls: string): number[] {

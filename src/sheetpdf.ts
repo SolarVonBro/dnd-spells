@@ -512,7 +512,7 @@ function personalityPage(c: Ctx): PNode[] {
     ...(c.ch.photo ? [{
       // Portrait next to the looks: the photo in a frame, the fields and the appearance box beside it.
       columns: [
-        { width: PHOTO_W, ...box(c, 'Портрет', [{ image: c.ch.photo, fit: [PHOTO_W - 12, 170], alignment: 'center', margin: [0, 2, 0, 0] }]) },
+        { width: PHOTO_W, ...box(c, 'Портрет', [{ image: c.ch.photo, fit: [PHOTO_W - 12, (PHOTO_W - 12) * 1.25], alignment: 'center', margin: [0, 2, 0, 0] }]) },
         { width: '*', stack: [
           fields(c, [[[d.age, 'Возраст'], [d.height, 'Рост'], [d.weight, 'Вес']], [[d.eyes, 'Глаза'], [d.skin, 'Кожа'], [d.hair, 'Волосы']]], ['*', '*', '*'], true),
           { ...textBox(c, 'Внешность', d.appearance, n(d.appearance, 3), W - PHOTO_W - 8), margin: [0, 4, 0, 0] },
@@ -526,7 +526,7 @@ function personalityPage(c: Ctx): PNode[] {
     // The portrait row is taller than the looks fields: fewer ruled lines below keep the page to one sheet.
     { ...textBox(c, 'Предыстория персонажа', d.backstory, n(d.backstory, photo ? 7 : 10), W), margin: [0, 6, 0, 0] },
     { ...textBox(c, 'Союзники и организации', d.allies, n(d.allies, photo ? 4 : 5), W), margin: [0, 6, 0, 0] },
-    { ...textBox(c, 'Заметки', d.notes, n(d.notes, (c.s > 1 ? 5 : 9) - (photo ? 3 : 0)), W), margin: [0, 6, 0, 0] },
+    { ...textBox(c, 'Заметки', d.notes, n(d.notes, (c.s > 1 ? 5 : 9) - (photo ? 4 : 0)), W), margin: [0, 6, 0, 0] },
   ];
 }
 

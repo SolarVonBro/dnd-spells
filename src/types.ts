@@ -70,7 +70,10 @@ export interface Dataset {
   multiclassSlots: number[][];
   sources: Source[];
   classes: ClassInfo[];
+  /** Subclasses that matter for spells (spell lists, filters). */
   subclasses: SubclassInfo[];
+  /** All subclasses of the 2014 classes from official books (character creation); absent in older cached data. */
+  subclassesAll?: SubclassInfo[];
   spells: Version[];
 }
 

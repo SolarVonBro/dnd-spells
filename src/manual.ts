@@ -5,13 +5,39 @@ import type { CasterInfo, Dataset, Version } from './types';
 import type { CharClass } from './lists';
 import { optionsOf, type Character } from './characters';
 import {
-  ABILITIES, ABILITY, SIZES, SKILL_DEFS, XP_LEVELS, abilityMod, buildSheet, signed,
+  ABILITIES, ABILITY, SIZES, SKILL_DEFS, XP_LEVELS, abilityMod, buildSheet, genericCaster, signed,
   type Ability, type Sheet, type SheetAttack, type SheetCaster, type SheetFeatureGroup, type SheetItem, type SheetResource, type SheetSkill, type SheetSpell,
 } from './sheet';
 import { alwaysPrepared, casterFor, classLimits, maxSpellLevel, slotSummaryFor } from './casting';
-import { classLabel, subclassLabel } from './listview';
+import { subclassLabel } from './listview';
 import { SCHOOL } from './i18n';
-import { classRules, normalizeManual, type FeatureGroup, type ManualData } from './manualdata';
+import { LL_CLASSES, classRules, classSaves, isCustom, normalizeManual, type FeatureGroup, type ManualClass, type ManualData } from './manualdata';
+
+/** Name of a class of the character: the site's class, a Laserllama class (with or without a document) or a typed-in one. */
+export function mClassName(data: Dataset, c: Pick<ManualClass, 'cls' | 'custom'>): string {
+  if (c.custom || isCustom(c.cls)) return c.custom?.name.trim() || 'Свой класс';
+  if (c.cls.startsWith('LL:')) {
+    const code = c.cls.slice(3);
+    return `${data.classes.find((x) => x.code === code)?.ru ?? LL_CLASSES[code]?.ru ?? code} (Laserllama)`;
+  }
+  return data.classes.find((x) => x.code === c.cls)?.ru ?? c.cls;
+}
+
+export interface SubOption { id: string; label: string; en: string }
+/** Subclasses to choose from: all subclasses of the 2014 books, or those of a Laserllama class document. */
+export function subOptions(data: Dataset, cls: string): SubOption[] {
+  if (isCustom(cls)) return [];
+  if (cls.startsWith('LL:')) return (LL_CLASSES[cls.slice(3)]?.subclasses ?? []).map((x) => ({ id: x.id, label: x.ru, en: x.en }));
+  return (data.subclassesAll ?? data.subclasses).filter((x) => x.class === cls)
+    .map((x) => ({ id: x.id, label: x.ru ?? x.en, en: x.en }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+}
+
+export function mSubName(data: Dataset, c: Pick<ManualClass, 'cls' | 'sub' | 'subName'>): string | null {
+  if (!c.sub) return null;
+  if (c.sub === 'custom') return c.subName?.trim() || 'свой подкласс';
+  return subOptions(data, c.cls).find((x) => x.id === c.sub)?.label ?? subclassLabel(data, c.sub);
+}
 
 /** The sheet of any character: from the Foundry file or from the data typed in on the site. */
 export const sheetOf = (data: Dataset, ch: Character): Sheet => (ch.manual ? buildManualSheet(data, ch) : buildSheet(data, ch));
@@ -52,8 +78,8 @@ export function buildManualSheet(data: Dataset, ch: Character): Sheet {
   const lvlOf = (base: string) => classes.filter((c) => c.cls.replace(/^LL:/, '') === base).reduce((n, c) => n + c.level, 0);
 
   /* saving throws and skills */
-  const saveSet = new Set<string>(m.saves ?? rules?.saves ?? []);
-  if (first && !rules && !m.saves) warnings.push(`${classLabel(data, first.cls)}: правил класса на сайте нет — отметьте спасброски и кость хитов сами.`);
+  const saveSet = new Set<string>(m.saves ?? (first ? classSaves(first) : []));
+  if (first && !rules && !first.custom && !m.saves) warnings.push(`${mClassName(data, first)}: правил класса на сайте нет — отметьте спасброски и кость хитов сами.`);
   const abilities = ABILITIES.map((k) => ({
     key: k, name: ABILITY[k].name, short: ABILITY[k].short, score: score(k), mod: mods[k], saveProf: saveSet.has(k),
     save: mods[k] + (saveSet.has(k) ? prof : 0),
@@ -126,6 +152,10 @@ export function buildManualSheet(data: Dataset, ch: Character): Sheet {
   const weaponProf: string[] = [];
   const toolNames: string[] = [];
   classes.forEach((c, i) => {
+    if (c.custom) {
+      if (i === 0) { armorProf.push(...list(c.custom.armor)); weaponProf.push(...list(c.custom.weapons)); }
+      return;
+    }
     const r = classRules(c.cls);
     if (!r) return;
     if (i === 0) { armorProf.push(...r.armor); weaponProf.push(...r.weapons); if (r.tools) toolNames.push(r.tools); } else {
@@ -155,10 +185,16 @@ export function buildManualSheet(data: Dataset, ch: Character): Sheet {
   const casterEntries: { c: CharClass; info: CasterInfo | null; name: string }[] = [];
   for (const c of classes) {
     const cc: CharClass = { cls: c.cls, level: c.level, sub: c.sub, mod: null };
-    const info = casterFor(data, cc).info;
+    let info: CasterInfo | null;
+    if (c.custom) info = c.custom.caster === 'none' ? null : genericCaster(c.custom.caster, c.custom.ability, data);
+    else {
+      info = casterFor(data, cc).info;
+      // A Laserllama subclass that is a third-caster in the official class too (Arcane Trickster, Eldritch Knight).
+      if (!info && c.sub && c.sub !== 'custom') info = data.casters.find((x) => x.key === `${c.cls.replace(/^LL:/, '')}:${c.sub!.split(':').pop()}`) ?? null;
+    }
     if (!info) continue;
     cc.mod = mods[info.ability];
-    casterEntries.push({ c: cc, info, name: `${classLabel(data, c.cls)}${c.sub && info.subclass ? ` (${subclassLabel(data, c.sub)})` : ''}` });
+    casterEntries.push({ c: cc, info, name: `${mClassName(data, c)}${c.sub && info.subclass ? ` (${mSubName(data, c)})` : ''}` });
   }
   const slotSum = slotSummaryFor(casterEntries.map(({ c, info }) => ({ c, info })), data.multiclassSlots);
   const casters: SheetCaster[] = casterEntries.map(({ c, info, name }) => {
@@ -204,7 +240,7 @@ export function buildManualSheet(data: Dataset, ch: Character): Sheet {
   };
   const raceTitle = m.race.trim() ? `Раса: ${m.race.trim()}` : 'Раса';
   const bgTitle = m.background.trim() ? `Предыстория: ${m.background.trim()}` : 'Предыстория';
-  const classTitle = first ? `Класс: ${classLabel(data, first.cls)} ${first.level}` : 'Класс';
+  const classTitle = first ? `Класс: ${mClassName(data, first)} ${first.level}` : 'Класс';
   const titles: Record<FeatureGroup, string> = { race: raceTitle, class: classTitle, background: bgTitle, feat: 'Черты', other: 'Прочие умения' };
   const resources: SheetResource[] = [];
   const hidden = new Set(ch.hiddenRes ?? []);
@@ -235,17 +271,17 @@ export function buildManualSheet(data: Dataset, ch: Character): Sheet {
 
   /* details */
   const notes = ch.notes ?? {};
-  const classLine = classes.map((c) => `${classLabel(data, c.cls)} ${c.level}${c.sub ? ` (${subclassLabel(data, c.sub)})` : ''}`).join(' / ');
-  const listClasses: CharClass[] = classes.map((c) => {
+  const classLine = classes.map((c) => `${mClassName(data, c)} ${c.level}${c.sub ? ` (${mSubName(data, c)})` : ''}`).join(' / ');
+  const listClasses: CharClass[] = classes.filter((c) => !c.custom && !isCustom(c.cls)).map((c) => {
     const e = casterEntries.find((x) => x.c.cls === c.cls);
-    return { cls: c.cls, level: c.level, sub: c.sub, mod: e?.c.mod ?? null };
+    return { cls: c.cls, level: c.level, sub: c.sub === 'custom' ? null : c.sub, mod: e?.c.mod ?? null };
   });
   const lv = Math.min(level, 20);
 
   return {
     name: ch.name || 'Без имени',
     level, prof, classLine,
-    classes: classes.map((c) => ({ name: classLabel(data, c.cls), level: c.level, sub: c.sub ? subclassLabel(data, c.sub) : null, hd: `к${hitDie(c)}`, hdUsed: 0 })),
+    classes: classes.map((c) => ({ name: mClassName(data, c), level: c.level, sub: mSubName(data, c), hd: `к${hitDie(c)}`, hdUsed: 0 })),
     race: m.race.trim(), background: m.background.trim(), alignment: notes.alignment ?? '', player: notes.player ?? '',
     xp: Math.max(0, Math.round(m.xp) || 0), xpNext: lv < 20 ? XP_LEVELS[lv] : null,
     size: size.name,
