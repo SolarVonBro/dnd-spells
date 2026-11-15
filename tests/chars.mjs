@@ -74,7 +74,7 @@ check(layout.list === 'none' && layout.detail > 1300 && !layout.search && layout
 // Theme: "Сумерки" by default (with its fonts); the header menu switches to the classic dark one, the choice survives
 // a reload; "as in the system" is the classic theme without data-theme; choosing "Сумерки" again clears the choice.
 const pickTheme = async (label) => {
-  await page.click('.theme-btn');
+  await page.click('.theme:not(.sync) .theme-btn');
   await page.waitForSelector('.theme-menu');
   await clickText('.theme-menu .menu-item', label);
 };

@@ -169,3 +169,6 @@ export async function readActorFile(file: File): Promise<FActor> {
 export function exportCharacters() {
   downloadText(store.backup('dnd-characters'), `characters-${new Date().toISOString().slice(0, 10)}.json`);
 }
+
+/** The store itself (Google Drive synchronization). */
+export const charStore = store;

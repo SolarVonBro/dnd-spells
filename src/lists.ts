@@ -69,3 +69,6 @@ export async function importBackup(file: File): Promise<number> {
   if (n == null) throw new Error('not a spell list backup');
   return n;
 }
+
+/** The store itself (Google Drive synchronization). */
+export const listStore = store;

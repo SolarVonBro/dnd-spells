@@ -22,6 +22,12 @@ export interface UserStore<T extends StoredItem> {
   backup(app: string): string;
   /** Merge items from a parsed backup file; deleted items come back. Returns the number of items in the file, or null if it is not a backup. */
   restore(data: unknown): number | null;
+  /** The stored state (for synchronization): `{ v, [field], deleted }`. */
+  snapshot(): unknown;
+  /** Merge a copy from another device: the newest version of every item wins, deletions included. True if anything changed here. */
+  mergeRemote(data: unknown): boolean;
+  /** Called after every change (here or from another tab). */
+  subscribe(f: () => void): () => void;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -156,6 +162,18 @@ export function createUserStore<T extends StoredItem>(opts: {
     },
     remove(id) { save(withItems(items(state).filter((x) => x.id !== id), { ...state.deleted, [id]: Date.now() })); },
     backup(app) { return JSON.stringify({ app, ...state }, null, 1); },
+    snapshot: () => state,
+    mergeRemote(data) {
+      if (!valid(data)) return false;
+      const next = merge(state, { ...empty(), ...data });
+      if (JSON.stringify(next) === JSON.stringify(state)) return false;
+      save(next);
+      return true;
+    },
+    subscribe(f) {
+      listeners.add(f);
+      return () => { listeners.delete(f); };
+    },
     restore(data) {
       if (!valid(data)) return null;
       // Restoring from a file brings back items that were deleted here.

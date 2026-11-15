@@ -13,6 +13,8 @@ import { ListEditor, ListsHome } from './components/Lists';
 import { CharacterView, CharactersHome } from './components/Characters';
 import { StatsPage } from './components/Stats';
 import { loadStatSets, useStatSets } from './stats';
+import { startSync } from './gsync';
+import { SyncButton } from './components/Sync';
 import { charactersReady, loadCharacters, useCharacters } from './characters';
 import { Icon, Segmented, ThemeToggle } from './components/ui';
 
@@ -166,7 +168,7 @@ export function App() {
   // The list or character page a spell card was opened from: the card shows a way back to it.
   const [origin, setOrigin] = useState<{ hash: string; label: string } | null>(null);
 
-  useEffect(() => { void loadLists(); void loadCharacters(); void loadStatSets(); }, []);
+  useEffect(() => { void loadLists(); void loadCharacters(); void loadStatSets(); startSync(); }, []);
 
   // Remembered key: load the dataset (local cache if current, otherwise decrypt the published file).
   useEffect(() => {
@@ -316,6 +318,7 @@ export function App() {
               </a>
             ))}
           </nav>
+          <SyncButton />
           <ThemeToggle />
         </header>
         {browser && (
