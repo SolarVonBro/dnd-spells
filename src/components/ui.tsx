@@ -53,6 +53,8 @@ const ICONS: Record<string, string> = {
   moon: 'M12 3a9 9 0 1 0 9 9c0-.5 0-.9-.1-1.4a5.4 5.4 0 0 1-9.8-3.1c0-1.8.9-3.4 2.3-4.4L12 3Z',
   contrast: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm1-17.9a8 8 0 0 1 0 15.8V4.1Z',
   spark: 'M10 2c.5 4.8 3.2 7.5 8 8-4.8.5-7.5 3.2-8 8-.5-4.8-3.2-7.5-8-8 4.8-.5 7.5-3.2 8-8Zm8 12c.2 2.3 1.6 3.7 4 4-2.4.3-3.8 1.7-4 4-.2-2.3-1.6-3.7-4-4 2.4-.3 3.8-1.7 4-4Z',
+  // moon (Material dark_mode) with a star
+  mystic: 'M12 3a9 9 0 1 0 9 9c0-.5 0-.9-.1-1.4a5.4 5.4 0 0 1-9.8-3.1c0-1.8.9-3.4 2.3-4.4L12 3Zm6-1 .9 2.1L21 5l-2.1.9L18 8l-.9-2.1L15 5l2.1-.9L18 2Z',
   person: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5Z',
   trash: 'M7 21a2 2 0 0 1-2-2V7H4V5h5V4h6v1h5v2h-1v12a2 2 0 0 1-2 2H7Zm10-14H7v12h10V7ZM9 17h2V9H9v8Zm4 0h2V9h-2v8Z',
 };
@@ -61,13 +63,14 @@ export const Icon = ({ name, size = 20 }: { name: keyof typeof ICONS | string; s
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d={ICONS[name]} /></svg>
 );
 
-const THEMES: { value: Theme; label: string; icon: string }[] = [
-  { value: 'auto', label: 'Как в системе', icon: 'contrast' },
-  { value: 'light', label: 'Светлая', icon: 'sun' },
-  { value: 'dark', label: 'Тёмная', icon: 'moon' },
+const THEMES: { value: Theme; label: string; icon: string; hint?: string }[] = [
+  { value: 'mystic', label: 'Сумерки', icon: 'mystic', hint: 'новая тема' },
+  { value: 'auto', label: 'Как в системе', icon: 'contrast', hint: 'классическая' },
+  { value: 'light', label: 'Светлая', icon: 'sun', hint: 'классическая' },
+  { value: 'dark', label: 'Тёмная', icon: 'moon', hint: 'классическая' },
 ];
 
-/** Theme menu in the header: as in the system / light / dark. */
+/** Theme menu in the header: "Сумерки" or the classic theme (as in the system / light / dark). */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [open, setOpen] = useState(false);
@@ -92,7 +95,7 @@ export function ThemeToggle() {
           {THEMES.map((t) => (
             <button type="button" role="menuitemradio" aria-checked={t.value === theme} class={`menu-item${t.value === theme ? ' cur' : ''}`}
               onClick={() => { applyTheme(t.value); setTheme(t.value); setOpen(false); }}>
-              <Icon name={t.icon} size={18} /> <span>{t.label}</span>{t.value === theme && <Icon name="check" size={16} />}
+              <Icon name={t.icon} size={18} /> <span>{t.label}{t.hint && <small>{t.hint}</small>}</span>{t.value === theme && <Icon name="check" size={16} />}
             </button>
           ))}
         </div>

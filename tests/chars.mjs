@@ -71,12 +71,26 @@ const layout = await page.evaluate(() => ({
 check(layout.list === 'none' && layout.detail > 1300 && !layout.search && layout.side,
   `character page is full-width with settings on the side (list ${layout.list}, ${Math.round(layout.detail)} px, search ${layout.search})`);
 
-// Theme: the header menu switches to dark, the choice survives a reload, "as in the system" removes it.
+// Theme: "Сумерки" by default (with its fonts); the header menu switches to the classic dark one, the choice survives
+// a reload; "as in the system" is the classic theme without data-theme; choosing "Сумерки" again clears the choice.
 const pickTheme = async (label) => {
   await page.click('.theme-btn');
   await page.waitForSelector('.theme-menu');
   await clickText('.theme-menu .menu-item', label);
 };
+const mystic = await page.evaluate(async () => {
+  await document.fonts.ready;
+  return {
+    attr: document.documentElement.dataset.theme,
+    // UI and heading fonts are used on this page; the reading font (spell texts) is loaded when a text is shown
+    fonts: [...new Set([...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/"/g, '')))]
+      .filter((f) => ['Alegreya Sans', 'Cormorant Garamond Variable'].includes(f)),
+    bar: document.querySelector('meta[name="theme-color"]').content,
+  };
+});
+check(mystic.attr === 'mystic' && mystic.fonts.length === 2 && mystic.bar === '#17161e',
+  `"Сумерки" is the default theme (${mystic.attr}, fonts: ${mystic.fonts.join(', ')}, bar ${mystic.bar})`);
+await shot('c1-character-mystic');
 await pickTheme('Тёмная');
 const dark = await page.evaluate(() => ({ attr: document.documentElement.dataset.theme, bg: getComputedStyle(document.body).backgroundColor }));
 check(dark.attr === 'dark' && dark.bg === 'rgb(18, 19, 22)', `dark theme (${dark.attr}, ${dark.bg})`);
@@ -87,7 +101,9 @@ check(await page.evaluate(() => document.documentElement.dataset.theme === 'dark
 await pickTheme('Светлая');
 check(await page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(245, 241, 232)'), 'light theme');
 await pickTheme('Как в системе');
-check(await page.evaluate(() => !document.documentElement.hasAttribute('data-theme') && localStorage.getItem('dnd.theme') === null), 'theme "as in the system" clears the choice');
+check(await page.evaluate(() => !document.documentElement.hasAttribute('data-theme') && localStorage.getItem('dnd.theme') === 'auto'), 'theme "as in the system": classic, no data-theme');
+await pickTheme('Сумерки');
+check(await page.evaluate(() => document.documentElement.dataset.theme === 'mystic' && localStorage.getItem('dnd.theme') === null), 'back to "Сумерки" clears the choice');
 const stats = await text('.stat');
 console.log('     stats:', stats.join(' | '));
 const abil = await text('.abil');
