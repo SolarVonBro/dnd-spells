@@ -229,12 +229,13 @@ await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true
 await page.goto(`${url.replace(/#.*$/, '')}#/@lists`, { waitUntil: 'networkidle0' });
 await page.reload({ waitUntil: 'networkidle0' });
 await page.waitForSelector('.cards .card', { timeout: 60000 });
+await page.evaluate(() => document.fonts.ready);
 const phoneNav = await page.evaluate(() => ({
   tabs: [...document.querySelectorAll('.nav-tab')].map((t) => t.getBoundingClientRect()).map((r) => [Math.round(r.left), Math.round(r.right)]),
   wide: document.documentElement.scrollWidth <= window.innerWidth + 1,
-  labels: [...document.querySelectorAll('.nav-tab .lbl')].every((l) => l.scrollWidth <= l.clientWidth + 1),
+  labels: [...document.querySelectorAll('.nav-tab .lbl')].filter((l) => l.offsetParent).every((l) => l.scrollWidth <= l.clientWidth + 1),
 }));
-check(phoneNav.tabs.length === 3 && phoneNav.wide && phoneNav.labels, `phone: menu fits the screen, labels not cut (${JSON.stringify(phoneNav.tabs)})`);
+check(phoneNav.tabs.length === 4 && phoneNav.wide && phoneNav.labels, `phone: menu fits the screen, labels not cut (${JSON.stringify(phoneNav.tabs)})`);
 await shot('l4-phone-lists');
 await page.click('.cards .card');
 await page.waitForSelector('.ccard .btn');

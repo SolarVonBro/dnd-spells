@@ -11,6 +11,8 @@ import { SpellTiles } from './components/SpellTiles';
 import { SpellDetail, type View } from './components/SpellDetail';
 import { ListEditor, ListsHome } from './components/Lists';
 import { CharacterView, CharactersHome } from './components/Characters';
+import { StatsPage } from './components/Stats';
+import { loadStatSets, useStatSets } from './stats';
 import { charactersReady, loadCharacters, useCharacters } from './characters';
 import { Icon, Segmented, ThemeToggle } from './components/ui';
 
@@ -24,17 +26,19 @@ interface Route {
   /** Open spell (group id). */
   id: string | null;
   view: View;
-  /** '#/@lists' - all character lists, '#/@list/<id>' - one list, '#/@chars' - character sheets, '#/@char/<id>' - one sheet. */
-  page: 'main' | 'lists' | 'list' | 'chars' | 'char';
+  /** '#/@lists' - all character lists, '#/@list/<id>' - one list, '#/@chars' - character sheets, '#/@char/<id>' - one sheet,
+   *  '#/@stats' - ability score calculator. */
+  page: 'main' | 'lists' | 'list' | 'chars' | 'char' | 'stats';
   listId: string | null;
 }
 
 /** Sections of the site menu in the header. */
-type Section = 'spells' | 'lists' | 'chars';
-const SECTIONS: { id: Section; label: string; icon: string; hash: string; title: string }[] = [
+type Section = 'spells' | 'lists' | 'chars' | 'stats';
+const SECTIONS: { id: Section; label: string; short?: string; icon: string; hash: string; title: string }[] = [
   { id: 'spells', label: 'Заклинания', icon: 'spark', hash: '#/', title: 'Книга заклинаний' },
   { id: 'lists', label: 'Списки', icon: 'book', hash: '#/@lists', title: 'Списки заклинаний' },
   { id: 'chars', label: 'Персонажи', icon: 'person', hash: '#/@chars', title: 'Листы персонажей' },
+  { id: 'stats', label: 'Характеристики', short: 'Статы', icon: 'dice', hash: '#/@stats', title: 'Калькулятор характеристик' },
 ];
 
 function parseHash(): Route {
@@ -43,6 +47,7 @@ function parseHash(): Route {
   if (a === '@list' && b) return { id: null, view: 'official', page: 'list', listId: b };
   if (a === '@chars') return { id: null, view: 'official', page: 'chars', listId: null };
   if (a === '@char' && b) return { id: null, view: 'official', page: 'char', listId: b };
+  if (a === '@stats') return { id: null, view: 'official', page: 'stats', listId: null };
   return { id: a || null, view: b === 'll' || b === 'compare' ? b : 'official', page: 'main', listId: null };
 }
 const listHash = (id: string) => `#/@list/${encodeURIComponent(id)}`;
@@ -91,7 +96,7 @@ function Login({ onDone, expired }: { onDone: (data: Dataset) => void; expired: 
   );
 }
 
-function Welcome({ data, total, onLogout, onLists, onChars }: { data: Dataset; total: number; onLogout: () => void; onLists: () => void; onChars: () => void }) {
+function Welcome({ data, total, onLogout, onLists, onChars, onStats }: { data: Dataset; total: number; onLogout: () => void; onLists: () => void; onChars: () => void; onStats: () => void }) {
   const ll = data.sources.find((s) => s.homebrew);
   const alt = data.spells.filter((s) => s.relation === 'alt').length;
   return (
@@ -110,6 +115,12 @@ function Welcome({ data, total, onLogout, onLists, onChars }: { data: Dataset; t
           КД, хиты, атаки и ячейки, подставит переводы заклинаний и соберёт PDF-лист для игры за столом — с клетками для отметок
           и дополнительными страницами под заклинания, снаряжение и заметки. Листы хранятся в этом браузере.</p>
         <button type="button" class="btn" onClick={onChars}><Icon name="person" size={18} /> Листы персонажей</button>
+      </div>
+      <div class="welcome-lists">
+        <p><b>Калькулятор характеристик.</b> Поинтбай (в том числе со своим числом очков), стандартный набор, броски по правилам «Книги игрока»
+          или по своей формуле, бонусы от расы, происхождения, классов и черт, Здравомыслие и Честь. Наборы сохраняются для персонажей,
+          а итог копируется одной строкой.</p>
+        <button type="button" class="btn" onClick={onStats}><Icon name="dice" size={18} /> Характеристики</button>
       </div>
       <ul class="kbd-help">
         <li><kbd>/</kbd> — поиск</li>
@@ -148,13 +159,14 @@ export function App() {
   const listRef = useRef<HTMLDivElement>(null);
   const lists = useLists();
   const chars = useCharacters();
+  const statSets = useStatSets();
   // Picking spells for a character list: the spell list gets add/remove toggles and its own filters.
   const [picker, setPicker] = useState<{ listId: string; cls: string } | null>(null);
   const [pickFilters, setPickFilters] = useState<Filters>(EMPTY_FILTERS);
   // The list or character page a spell card was opened from: the card shows a way back to it.
   const [origin, setOrigin] = useState<{ hash: string; label: string } | null>(null);
 
-  useEffect(() => { void loadLists(); void loadCharacters(); }, []);
+  useEffect(() => { void loadLists(); void loadCharacters(); void loadStatSets(); }, []);
 
   // Remembered key: load the dataset (local cache if current, otherwise decrypt the published file).
   useEffect(() => {
@@ -182,7 +194,8 @@ export function App() {
   useEffect(() => { if (route.page !== 'main' || !route.id) setOrigin(null); }, [route]);
   // The spell browser (search, filters, the list of spells) is the "Заклинания" page and the picking mode of a list.
   const browser = route.page === 'main' || Boolean(pk);
-  const section: Section = pk || route.page === 'lists' || route.page === 'list' ? 'lists' : route.page === 'main' ? 'spells' : 'chars';
+  const section: Section = pk || route.page === 'lists' || route.page === 'list' ? 'lists'
+    : route.page === 'main' ? 'spells' : route.page === 'stats' ? 'stats' : 'chars';
   useEffect(() => {
     document.title = section === 'spells' ? 'Книга заклинаний' : `${SECTIONS.find((x) => x.id === section)!.title} — Книга заклинаний`;
   }, [section]);
@@ -284,7 +297,7 @@ export function App() {
   const pickInfo = pickClass ? casterFor(data, pickClass).info : null;
   const pickMax = pickInfo && pickClass ? classLimits(pickInfo, pickClass).maxLevel : null;
   const pickCount = pickBook && pk ? pickBook.spells.filter((s) => s.by === pk.cls).length : 0;
-  const badge: Record<Section, number> = { spells: 0, lists: lists.length, chars: chars.length };
+  const badge: Record<Section, number> = { spells: 0, lists: lists.length, chars: chars.length, stats: statSets.length };
 
   return (
     <div class={`app${layer ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}${tiles && browser ? ' layout-tiles' : ''}${fullPage ? ' full-page' : ''}`}>
@@ -297,7 +310,8 @@ export function App() {
             {SECTIONS.map((x) => (
               <a key={x.id} href={x.hash} class={`nav-tab nav-${x.id}`} aria-current={section === x.id ? 'page' : undefined} title={x.title}
                 onClick={(e) => { e.preventDefault(); navTo(x.id); }}>
-                <Icon name={x.icon} size={18} /><span class="lbl">{x.label}</span>
+                <Icon name={x.icon} size={18} />
+                {x.short ? <><span class="lbl lbl-full">{x.label}</span><span class="lbl lbl-short">{x.short}</span></> : <span class="lbl">{x.label}</span>}
                 {badge[x.id] > 0 && <span class="badge">{badge[x.id]}</span>}
               </a>
             ))}
@@ -386,7 +400,9 @@ export function App() {
           ) : <div class="loading"><div class="spinner" aria-label="Загрузка" /></div>
         ) : route.page === 'chars' ? (
           <CharactersHome onOpen={(id) => go(charHash(id))} />
-        ) : <Welcome data={data} total={records.length} onLogout={logout} onLists={() => navTo('lists')} onChars={() => navTo('chars')} />}
+        ) : route.page === 'stats' ? (
+          <StatsPage />
+        ) : <Welcome data={data} total={records.length} onLogout={logout} onLists={() => navTo('lists')} onChars={() => navTo('chars')} onStats={() => navTo('stats')} />}
       </main>
     </div>
   );
