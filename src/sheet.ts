@@ -24,7 +24,7 @@ export const ABILITY: Record<Ability, { name: string; short: string; gen: string
   cha: { name: 'Харизма', short: 'ХАР', gen: 'Харизмы' },
 };
 
-const SKILL_DEFS: { key: string; name: string; ability: Ability }[] = [
+export const SKILL_DEFS: { key: string; name: string; ability: Ability }[] = [
   { key: 'acr', name: 'Акробатика', ability: 'dex' }, { key: 'inv', name: 'Анализ', ability: 'int' },
   { key: 'ath', name: 'Атлетика', ability: 'str' }, { key: 'prc', name: 'Восприятие', ability: 'wis' },
   { key: 'sur', name: 'Выживание', ability: 'wis' }, { key: 'prf', name: 'Выступление', ability: 'cha' },
@@ -88,7 +88,7 @@ const WEAPONS: Record<string, string> = {
 const ARMOR_PROF: Record<string, string> = { lgt: 'лёгкие доспехи', med: 'средние доспехи', hvy: 'тяжёлые доспехи', shl: 'щиты' };
 const WEAPON_PROF: Record<string, string> = { sim: 'простое оружие', mar: 'воинское оружие' };
 
-const SIZES: Record<string, { name: string; carry: number }> = {
+export const SIZES: Record<string, { name: string; carry: number }> = {
   tiny: { name: 'Крошечный', carry: 0.5 }, sm: { name: 'Маленький', carry: 1 }, med: { name: 'Средний', carry: 1 },
   lg: { name: 'Большой', carry: 2 }, huge: { name: 'Огромный', carry: 4 }, grg: { name: 'Громадный', carry: 8 },
 };
@@ -102,7 +102,7 @@ const ALIGNMENTS: [RegExp, string][] = [
 
 const SCHOOL_KEY: Record<string, string> = { abj: 'A', con: 'C', div: 'D', enc: 'E', evo: 'V', ill: 'I', nec: 'N', trs: 'T' };
 
-const XP_LEVELS = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
+export const XP_LEVELS = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
 
 /* ---------------- helpers ---------------- */
 
@@ -279,7 +279,8 @@ export interface Sheet {
   size: string;
   abilities: { key: Ability; name: string; short: string; score: number; mod: number; save: number; saveProf: boolean }[];
   skills: SheetSkill[];
-  tools: { name: string; ability: Ability; total: number }[];
+  /** Tool proficiencies; total null: no single ability (typed in by hand). */
+  tools: { name: string; ability: Ability; total: number | null }[];
   passive: { perception: number; insight: number; investigation: number };
   ac: number;
   acNote: string;

@@ -819,6 +819,96 @@ select.pick { width: 100%; max-width: 240px; min-height: 36px; padding: 4px 8px;
   .brow-head select { max-width: none; flex: 1; }
 }
 
+/* ---------- characters created on the site; portraits ---------- */
+.newchar { display: grid; gap: 4px 16px; margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--accent); border-radius: 14px;
+  background: var(--card, var(--panel)); }
+.newchar-text { display: grid; gap: 2px; }
+.newchar-text span { font-size: 13.5px; color: var(--muted); }
+.newchar .newlist { margin: 6px 0 0; }
+.card.with-photo { grid-template-columns: 56px minmax(0, 1fr); column-gap: 12px; align-items: center; }
+.card.with-photo .card-name, .card.with-photo .card-meta { grid-column: 2; }
+.card-photo { grid-row: 1 / span 2; width: 56px; height: 56px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+
+.portrait { flex: none; display: grid; justify-items: center; gap: 2px; }
+.portrait-img { display: grid; place-items: center; align-content: center; width: 76px; height: 92px; padding: 0; overflow: hidden; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+.portrait-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.portrait-img.empty { border-style: dashed; font-size: 11.5px; }
+.portrait-img:hover { border-color: var(--accent); }
+.portrait-actions { display: flex; gap: 8px; }
+.portrait-actions .link { font-size: 12px; }
+.portrait .hint { max-width: 140px; text-align: center; }
+
+.notyet { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 10px; padding: 8px 12px; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--ll-soft) 70%, transparent); border: 1px solid color-mix(in srgb, var(--ll) 30%, var(--line)); font-size: 13.5px; }
+.notyet svg { flex: none; margin-top: 2px; color: var(--ll); }
+.notyet b { color: var(--ll); }
+.todo { padding: 8px 12px; border-radius: var(--radius); background: var(--warn-soft, var(--accent-soft)); font-size: 13px; line-height: 1.45; }
+.todo b { color: var(--warn, var(--accent)); }
+.todo span { color: var(--muted); }
+.hint.ok { color: var(--rit); font-weight: 600; }
+
+.abil-edit { display: grid; gap: 8px; }
+.statset-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.statset-pick select { flex: 1 1 260px; min-width: 0; min-height: 40px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--text); font: inherit; font-size: 14px; }
+.abil-inputs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.abil-in { display: grid; justify-items: center; gap: 4px; padding: 8px 6px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card, var(--panel)); }
+.abil-in > span { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.abil-in input { width: 64px; min-height: 38px; padding: 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  font: inherit; font-size: 18px; font-weight: 700; text-align: center; }
+.abil-in b { font-size: 15px; }
+.save-tg { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 11.5px; }
+.save-tg.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+
+.medit { display: grid; gap: 10px; margin: 10px 0 4px; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 12px; align-items: end; }
+.mfield { display: grid; gap: 3px; min-width: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+.mfield.wide { grid-column: span 2; }
+.mfield input, .mfield select, .mrow input, .mrow select, .mrow textarea, .mini input {
+  min-width: 0; min-height: 38px; padding: 5px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  font: inherit; font-size: 14.5px; }
+.mfield .seg { justify-self: start; }
+.mcheck { margin-top: 0; align-self: center; }
+.mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card, var(--panel)); }
+.mrow > input[type="text"]:first-child { flex: 1 1 160px; }
+.mrow .wnotes { flex: 1 1 180px; }
+.mrow.weapon select { max-width: 200px; }
+.mrow.weapon input[aria-label="Кости урона"] { width: 76px; }
+.mrow.weapon input[aria-label="Вид урона"] { width: 120px; }
+.mrow .icon-btn { margin-left: auto; }
+.mrow.feature { display: grid; }
+.mrow-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.mrow-line input[type="text"] { flex: 1 1 200px; }
+.mrow.feature textarea { width: 100%; resize: vertical; }
+.mini { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.mini input { width: 70px; }
+.coins-edit { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.coins-edit .mini input { width: 86px; }
+
+.spell-add { margin-top: 12px; }
+.spell-search { max-width: none; }
+.found { list-style: none; display: grid; gap: 4px; margin: 0; padding: 0; }
+.found-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card, var(--panel)); text-align: left; }
+.found-row:hover:not(:disabled) { border-color: var(--accent); }
+.found-row:disabled { opacity: .6; cursor: default; }
+.found-row .row-main { flex: 1; min-width: 0; display: grid; }
+.found-act { display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: 12.5px; font-weight: 600; color: var(--accent); }
+.found-row.on .found-act { color: var(--rit); }
+
+@container detail (max-width: 700px) {
+  .abil-inputs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mfield.wide { grid-column: 1 / -1; }
+  .mgrid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 719px) {
+  .portrait-img { width: 56px; height: 68px; }
+  .portrait-actions { display: none; }
+}
+
 /* ---------- theme "Сумерки" (mystic): dark calm tones, matte surfaces, soft gradients, book fonts ---------- */
 :root[data-theme="mystic"] {
   --bg: #14131a;

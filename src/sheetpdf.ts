@@ -2,7 +2,8 @@
 // play (hit points, spent slots, uses, coins, new spells and items) gets empty boxes and ruled lines for a pencil.
 import type { Dataset } from './types';
 import { optionsOf, type Character } from './characters';
-import { ABILITY, buildSheet, signed, spellLevelLabel, type Sheet, type SheetSpell } from './sheet';
+import { ABILITY, signed, spellLevelLabel, type Sheet, type SheetSpell } from './sheet';
+import { sheetOf } from './manual';
 import { levelSchool } from './i18n';
 import { htmlToPdf, loadEngine, saveBlob, type PNode } from './pdfcore';
 
@@ -170,7 +171,7 @@ function mainPage(full: Ctx): PNode[] {
   const line = (k: string, v: string[]) => { if (v.length) profLines.push({ text: [{ text: `${k}: `, bold: true }, v.join(', ')], margin: [0, 0, 0, 2] }); };
   line('Доспехи', sh.armorProf);
   line('Оружие', sh.weaponProf);
-  line('Инструменты', sh.tools.map((t) => `${t.name} ${signed(t.total)}`));
+  line('Инструменты', sh.tools.map((t) => (t.total == null ? t.name : `${t.name} ${signed(t.total)}`)));
   line('Языки', sh.languages);
   line('Чувства', sh.senses);
   for (const d of sh.defenses) line(d.label, d.values);
@@ -496,20 +497,36 @@ function textBox(c: Ctx, title: string, text: string, ruled: number, width: numb
   return box(c, title, [...(text ? [{ text, fontSize: 8.8 * c.s, margin: [0, 0, 0, 2] }] : []), lines(ruled, width - 14, 15 * c.s)]);
 }
 
+const PHOTO_W = 160;
+
 function personalityPage(c: Ctx): PNode[] {
   const { sheet: sh } = c;
   const d = sh.details;
   const half = (W - 8) / 2;
   const n = (t: string, base: number) => Math.max(1, base - Math.ceil(t.length / 70));
+  const photo = Boolean(c.ch.photo);
   return [
     pageTitle(c, 'Личность и история', sh.name),
     { columns: [textBox(c, 'Черты характера', d.traits, n(d.traits, 4), half), textBox(c, 'Идеалы', d.ideals, n(d.ideals, 4), half)], columnGap: 8 },
     { columns: [textBox(c, 'Привязанности', d.bonds, n(d.bonds, 4), half), textBox(c, 'Слабости', d.flaws, n(d.flaws, 4), half)], columnGap: 8, margin: [0, 6, 0, 0] },
-    { ...fields(c, [[[d.age, 'Возраст'], [d.height, 'Рост'], [d.weight, 'Вес'], [d.eyes, 'Глаза'], [d.skin, 'Кожа'], [d.hair, 'Волосы']]], ['*', '*', '*', '*', '*', '*'], true), margin: [0, 4, 0, 2] },
-    { ...textBox(c, 'Внешность', d.appearance, n(d.appearance, 4), W), margin: [0, 4, 0, 0] },
-    { ...textBox(c, 'Предыстория персонажа', d.backstory, n(d.backstory, 10), W), margin: [0, 6, 0, 0] },
-    { ...textBox(c, 'Союзники и организации', d.allies, n(d.allies, 5), W), margin: [0, 6, 0, 0] },
-    { ...textBox(c, 'Заметки', d.notes, n(d.notes, c.s > 1 ? 5 : 9), W), margin: [0, 6, 0, 0] },
+    ...(c.ch.photo ? [{
+      // Portrait next to the looks: the photo in a frame, the fields and the appearance box beside it.
+      columns: [
+        { width: PHOTO_W, ...box(c, 'Портрет', [{ image: c.ch.photo, fit: [PHOTO_W - 12, 170], alignment: 'center', margin: [0, 2, 0, 0] }]) },
+        { width: '*', stack: [
+          fields(c, [[[d.age, 'Возраст'], [d.height, 'Рост'], [d.weight, 'Вес']], [[d.eyes, 'Глаза'], [d.skin, 'Кожа'], [d.hair, 'Волосы']]], ['*', '*', '*'], true),
+          { ...textBox(c, 'Внешность', d.appearance, n(d.appearance, 3), W - PHOTO_W - 8), margin: [0, 4, 0, 0] },
+        ] },
+      ],
+      columnGap: 8, margin: [0, 6, 0, 0],
+    }] : [
+      { ...fields(c, [[[d.age, 'Возраст'], [d.height, 'Рост'], [d.weight, 'Вес'], [d.eyes, 'Глаза'], [d.skin, 'Кожа'], [d.hair, 'Волосы']]], ['*', '*', '*', '*', '*', '*'], true), margin: [0, 4, 0, 2] },
+      { ...textBox(c, 'Внешность', d.appearance, n(d.appearance, 4), W), margin: [0, 4, 0, 0] },
+    ]),
+    // The portrait row is taller than the looks fields: fewer ruled lines below keep the page to one sheet.
+    { ...textBox(c, 'Предыстория персонажа', d.backstory, n(d.backstory, photo ? 7 : 10), W), margin: [0, 6, 0, 0] },
+    { ...textBox(c, 'Союзники и организации', d.allies, n(d.allies, photo ? 4 : 5), W), margin: [0, 6, 0, 0] },
+    { ...textBox(c, 'Заметки', d.notes, n(d.notes, (c.s > 1 ? 5 : 9) - (photo ? 3 : 0)), W), margin: [0, 6, 0, 0] },
   ];
 }
 
@@ -562,7 +579,7 @@ function spellTexts(c: Ctx, data: Dataset): PNode[] {
 export async function buildSheetPdf(data: Dataset, ch: Character): Promise<{ blob: Blob; pages: number }> {
   const pdfMake = await loadEngine();
   const opts = optionsOf(ch);
-  const sheet = buildSheet(data, ch);
+  const sheet = sheetOf(data, ch);
   const s = opts.large ? 1.12 : 1;
   const c: Ctx = { s, fs: 9 * s, row: 17 * s, sheet, ch };
   const hasMagic = sheet.casters.length > 0 || sheet.spells.length > 0;

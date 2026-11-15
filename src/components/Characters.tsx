@@ -1,11 +1,14 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
 import type { Dataset, Lang } from '../types';
 import {
-  deleteCharacter, exportCharacters, importFile, optionsOf, readActorFile, reimportCharacter, updateCharacter, useCharacters,
+  createManualCharacter, deleteCharacter, exportCharacters, importFile, optionsOf, readActorFile, reimportCharacter, updateCharacter, useCharacters,
   type Character, type SheetNotes, type SheetOptions,
 } from '../characters';
+import { manualTodo, sheetOf } from '../manual';
+import { normalizeManual } from '../manualdata';
+import { AbilityEditor, ClassEditor, CombatEditor, FeatureEditor, ItemEditor, OriginEditor, Portrait, SpellAdder, WeaponEditor, useManual } from './ManualChar';
 import { ImportError } from '../foundry';
-import { ABILITIES, ABILITY, buildSheet, signed, spellLevelLabel, summaryOf, type Sheet } from '../sheet';
+import { ABILITIES, ABILITY, signed, spellLevelLabel, summaryOf, type Sheet } from '../sheet';
 import { createList, type ListEntry } from '../lists';
 import { classForSpell } from '../casting';
 import { plural } from '../listview';
@@ -62,14 +65,33 @@ export function CharactersHome({ onOpen }: { onOpen: (id: string) => void }) {
     if (opened && files.length === 1 && !err) onOpen(opened);
   };
   const sorted = [...chars].sort((a, b) => b.updated - a.updated);
+  const [name, setName] = useState('');
+  const create = (e: Event) => {
+    e.preventDefault();
+    const c = createManualCharacter(name.trim() || 'Новый персонаж');
+    setName('');
+    onOpen(c.id);
+  };
   return (
     <section class="detail lists chars home">
       <header class="detail-head">
         <div class="title">
           <h2>Листы персонажей</h2>
-          <div class="subtitle">Персонажи из Foundry VTT → лист D&amp;D 5e для печати</div>
+          <div class="subtitle">Создайте персонажа на сайте или загрузите из Foundry VTT → лист D&amp;D 5e для печати</div>
         </div>
       </header>
+
+      <form class="newchar" onSubmit={create}>
+        <div class="newchar-text">
+          <b>Новый персонаж на сайте</b>
+          <span>Класс, уровень и бонус мастерства, характеристики из калькулятора, заклинания с сайта; расу, предысторию и снаряжение пока вписываете сами.</span>
+        </div>
+        <div class="newlist">
+          <input type="text" placeholder="Имя персонажа" aria-label="Имя нового персонажа" maxLength={80} value={name}
+            onInput={(e) => setName((e.target as HTMLInputElement).value)} />
+          <button type="submit" class="btn primary"><Icon name="plus" size={18} /> Создать</button>
+        </div>
+      </form>
 
       <div class={`dropzone${drag ? ' over' : ''}`}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
@@ -93,9 +115,10 @@ export function CharactersHome({ onOpen }: { onOpen: (id: string) => void }) {
           <ul class="cards">
             {sorted.map((c) => (
               <li key={c.id}>
-                <button type="button" class="card" onClick={() => onOpen(c.id)}>
+                <button type="button" class={`card${c.photo ? ' with-photo' : ''}`} onClick={() => onOpen(c.id)}>
+                  {c.photo && <img class="card-photo" src={c.photo} alt="" />}
                   <span class="card-name">{c.name || 'Без имени'}</span>
-                  <span class="card-meta">{summaryOf(c.actor) || 'класс не указан'}</span>
+                  <span class="card-meta">{summaryOf(c.actor) || 'класс не указан'}{c.manual ? ' · создан на сайте' : ' · из Foundry'}</span>
                 </button>
               </li>
             ))}
@@ -130,8 +153,14 @@ const PROF_CYCLE = [0, 1, 2, 0.5];
 const profTitle = (p: number) => (p >= 2 ? 'компетентность' : p >= 1 ? 'владение' : p > 0 ? 'половина бонуса мастерства' : 'нет владения');
 
 export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: ViewProps) {
-  const sheet = useMemo(() => buildSheet(data, ch), [data, ch]);
+  const sheet = useMemo(() => sheetOf(data, ch), [data, ch]);
   const set = (patch: Partial<Character>) => updateCharacter(ch.id, patch);
+  const manual = Boolean(ch.manual);
+  const man = useManual(data, ch);
+  const removeSpell = (key: string) => {
+    const [id, v] = key.split('|');
+    man.set({ spells: man.m.spells.filter((x) => !(x.id === id && x.v === v)) });
+  };
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -176,10 +205,11 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
     <section class="detail lists char">
       <header class="detail-head">
         <button type="button" class="icon-btn back" aria-label="К листам персонажей" onClick={onBack}><Icon name="back" /></button>
+        <Portrait ch={ch} />
         <div class="title">
           <input class="name-input" value={ch.name} maxLength={80} aria-label="Имя персонажа" placeholder="Имя персонажа"
             onChange={(e) => set({ name: (e.target as HTMLInputElement).value })} />
-          <div class="subtitle">{[s.classLine, s.race, s.background].filter(Boolean).join(' · ')}</div>
+          <div class="subtitle">{[s.classLine, s.race, s.background].filter(Boolean).join(' · ') || (manual ? 'Создан на сайте — выберите класс ниже' : '')}</div>
         </div>
       </header>
 
@@ -190,6 +220,13 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
         <ul class="warnings">{s.warnings.map((w) => <li>{w}</li>)}</ul>
       )}
 
+      {manual && <>
+        <h3 class="sec">Класс и уровень <span class="sec-hint">— бонус мастерства {signed(s.prof)}, уровень персонажа {s.level}</span></h3>
+        <ClassEditor data={data} ch={ch} />
+        <h3 class="sec">Характеристики <span class="sec-hint">— из набора калькулятора или вручную; «спасбр.» — владение спасброском</span></h3>
+        <AbilityEditor data={data} ch={ch} />
+      </>}
+
       <h3 class="sec">Основное</h3>
       <div class="stat-row">
         <Stat v={String(s.ac)} k="КД" note={s.acNote} />
@@ -199,7 +236,8 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
         <Stat v={signed(s.prof)} k="Бонус мастерства" note={`уровень ${s.level}`} />
         <Stat v={String(s.passive.perception)} k="Пасс. восприятие" />
       </div>
-      <div class="abil-grid">
+      {manual && <CombatEditor data={data} ch={ch} />}
+      {!manual && <div class="abil-grid">
         {s.abilities.map((a) => (
           <div class="abil">
             <span class="abil-name">{a.name}</span>
@@ -208,7 +246,12 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
             <span class={`abil-save${a.saveProf ? ' prof' : ''}`} title={a.saveProf ? 'Владение спасброском' : 'Спасбросок'}>спасбр. {signed(a.save)}</span>
           </div>
         ))}
-      </div>
+      </div>}
+
+      {manual && <>
+        <h3 class="sec">Раса, предыстория, владения</h3>
+        <OriginEditor data={data} ch={ch} />
+      </>}
 
       <div class="char-cols">
       <div>
@@ -224,7 +267,7 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
           </li>
         ))}
       </ul>
-      {Object.keys({ ...(ch.skills ?? {}), ...(ch.skillAb ?? {}) }).length > 0 && <button type="button" class="link" onClick={() => set({ skills: {}, skillAb: {} })}>вернуть навыки как в файле</button>}
+      {Object.keys({ ...(ch.skills ?? {}), ...(ch.skillAb ?? {}) }).length > 0 && <button type="button" class="link" onClick={() => set({ skills: {}, skillAb: {} })}>{manual ? 'сбросить навыки' : 'вернуть навыки как в файле'}</button>}
       </div>
       <div>
 
@@ -234,7 +277,8 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
           <thead><tr><th>Название</th><th>Атака / Сл</th><th>Урон</th><th>Примечания</th></tr></thead>
           <tbody>{s.attacks.map((a) => <tr><td><b>{a.name}</b></td><td>{a.bonus}</td><td>{a.damage}</td><td class="muted">{a.notes}</td></tr>)}</tbody>
         </table>
-      ) : <p class="empty-note">Оружия и атакующих заговоров нет.</p>}
+      ) : <p class="empty-note">{manual ? 'Оружия пока нет.' : 'Оружия и атакующих заговоров нет.'}</p>}
+      {manual && <WeaponEditor data={data} ch={ch} />}
       {s.resources.length > 0 && (
         <>
           <h3 class="sec">Ограниченные умения <span class="sec-hint">— на листе клетки для отметок</span></h3>
@@ -254,7 +298,7 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
       </div>
       </div>
 
-      {(s.casters.length > 0 || s.spells.length > 0) && (
+      {(manual || s.casters.length > 0 || s.spells.length > 0) && (
         <>
           <h3 class="sec">Заклинания</h3>
           {s.casters.map((k) => (
@@ -296,11 +340,14 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
                         <input type="checkbox" checked={sp.always} onChange={(e) => toggleAlways(sp.id, (e.target as HTMLInputElement).checked, base)} /> всегда
                       </label>
                     )}
+                    {manual && <button type="button" class="icon-btn" aria-label={`Убрать: ${sp.name}`} title="Убрать заклинание" onClick={() => removeSpell(sp.id)}><Icon name="close" size={18} /></button>}
                   </li>
                 </>
               );
             })}
           </ul>
+          {manual && s.spells.length === 0 && <p class="empty-note">Заклинаний пока нет — добавьте их из списка заклинаний или поиском.</p>}
+          {manual && <SpellAdder data={data} ch={ch} />}
           {s.spells.some((x) => x.site) && (
             <div class="btn-row">
               <button type="button" class="btn small" onClick={makeList}><Icon name="book" size={16} /> Сделать список заклинаний на сайте</button>
@@ -310,7 +357,8 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
       )}
 
       <h3 class="sec">Умения и черты</h3>
-      {s.features.map((g) => (
+      {manual && <FeatureEditor data={data} ch={ch} />}
+      {!manual && s.features.map((g) => (
         <div class="fgroup">
           <h4>{g.title}</h4>
           {g.items.map((f) => (
@@ -323,20 +371,21 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
       ))}
 
       <h3 class="sec">Снаряжение</h3>
+      {manual && <ItemEditor data={data} ch={ch} />}
       <p class="coins">{(['pp', 'gp', 'ep', 'sp', 'cp'] as const).filter((k) => s.currency[k]).map((k) => `${s.currency[k]} ${{ pp: 'пм', gp: 'зм', ep: 'эм', sp: 'см', cp: 'мм' }[k]}`).join(', ') || 'Монет нет'}
         <span class="muted"> · вес {s.carried} из {s.capacity} фнт.</span></p>
-      <table class="ctable inv">
+      {!manual && <table class="ctable inv">
         <thead><tr><th>Предмет</th><th>Кол-во</th><th>Вес</th><th>Заметки</th></tr></thead>
         <tbody>{s.inventory.map((it) => (
           <tr><td style={{ paddingLeft: `${8 + it.depth * 16}px` }}>{it.depth > 0 ? '— ' : ''}{it.name}</td><td>{it.qty}</td><td>{it.weight || '—'}</td><td class="muted">{it.notes}</td></tr>
         ))}</tbody>
-      </table>
+      </table>}
 
       <h3 class="sec">Личность и заметки <span class="sec-hint">— попадут на лист; пустые поля останутся для записей от руки</span></h3>
       <NotesForm ch={ch} sheet={s} />
 
       <div class="danger btn-row">
-        <button type="button" class="btn" onClick={() => fileRef.current?.click()}><Icon name="upload" size={18} /> Обновить из нового файла Foundry</button>
+        {!manual && <button type="button" class="btn" onClick={() => fileRef.current?.click()}><Icon name="upload" size={18} /> Обновить из нового файла Foundry</button>}
         <button type="button" class="btn ghost" onClick={() => { if (confirm(`Удалить лист «${ch.name || 'Без имени'}»?`)) { deleteCharacter(ch.id); onBack(); } }}>
           <Icon name="trash" size={18} /> Удалить лист
         </button>
@@ -354,7 +403,7 @@ export function CharacterView({ data, ch, onBack, onOpenSpell, onOpenList }: Vie
         }} />
       </div>
       {msg && <p class="hint" role="status">{msg}</p>}
-      <p class="hint">Файл: {ch.file}{ch.actor.sysVersion ? ` · dnd5e ${ch.actor.sysVersion}` : ''} · загружен {new Date(ch.imported).toLocaleString('ru-RU')}</p>
+      <p class="hint">{manual ? `Создан на сайте ${new Date(ch.created).toLocaleString('ru-RU')}` : `Файл: ${ch.file}${ch.actor.sysVersion ? ` · dnd5e ${ch.actor.sysVersion}` : ''} · загружен ${new Date(ch.imported).toLocaleString('ru-RU')}`}</p>
       </div>
       </div>
     </section>
@@ -400,6 +449,19 @@ function NotesForm({ ch, sheet }: { ch: Character; sheet: Sheet }) {
 }
 
 /* ---------------- print settings and PDF ---------------- */
+
+/** Before printing a character made on the site: what is not filled in (the site can't do it yet). */
+function TodoBox({ ch }: { ch: Character }) {
+  const todo = manualTodo(ch);
+  const m = normalizeManual(ch.manual);
+  if (!todo.length) return <p class="hint ok">Всё основное заполнено.</p>;
+  return (
+    <div class="todo" role="note">
+      <b>Перед PDF {todo.length === 1 ? 'не заполнено' : 'не заполнены'}:</b> {todo.join(', ')}.
+      <span> Расы, предыстории, умения и снаряжение на сайт пока не добавлены — впишите их на странице{m.classes.length ? '' : ' (и выберите класс)'} или оставьте пустыми, чтобы заполнить на листе от руки.</span>
+    </div>
+  );
+}
 
 function Count({ label, value, max, onChange, title }: { label: string; value: number; max: number; onChange: (n: number) => void; title?: string }) {
   return (
@@ -460,6 +522,7 @@ function PrintPanel({ data, ch, sheet }: { data: Dataset; ch: Character; sheet: 
         <Count label="для заметок" value={opts.notePages} max={10} onChange={(n) => setOpt({ notePages: n })} title="Разлинованные страницы" />
         {hasMagic && <Count label="пустых строк на уровень заклинаний" value={opts.spellRows} max={8} onChange={(n) => setOpt({ spellRows: n })} title="Под каждым уровнем, который персонаж может накладывать" />}
       </div>
+      {ch.manual && <TodoBox ch={ch} />}
       <p class="hint">
         В PDF: основной лист (характеристики, навыки, КД, хиты, атаки, клетки для ограниченных умений и ячеек), умения{opts.featureText ? ' с полными описаниями' : ''}
         {hasMagic ? ', заклинания по уровням' : ''}, снаряжение, личность и история{opts.spellText && hasMagic ? ', описания заклинаний' : ''}.

@@ -1,6 +1,7 @@
-// Character sheets imported from Foundry VTT, stored only in this browser (see userstore.ts).
+// Character sheets: imported from Foundry VTT or created on the site; stored only in this browser (see userstore.ts).
 import { createUserStore, downloadText, newId } from './userstore';
 import { ImportError, isActorFile, parseActor, type FActor } from './foundry';
+import { emptyManual, type ManualData } from './manualdata';
 import type { Lang } from './types';
 
 /** Print settings of a character sheet. */
@@ -46,8 +47,13 @@ export interface SheetNotes {
 export interface Character {
   id: string;
   name: string;
+  /** Foundry data; for a character created on the site a small stub (classes and race for the card). */
   actor: FActor;
-  /** Name of the imported file. */
+  /** Data of a character created on the site (no Foundry file): the sheet is computed from it. */
+  manual?: ManualData;
+  /** Portrait: a JPEG data URL, reduced in the browser. */
+  photo?: string;
+  /** Name of the imported file ('' for a character created on the site). */
   file: string;
   imported: number;
   opts: SheetOptions;
@@ -83,6 +89,28 @@ export const deleteCharacter = (id: string) => store.remove(id);
 
 /** Options of a stored character with defaults for settings added later. */
 export const optionsOf = (c: Character): SheetOptions => ({ ...DEFAULT_OPTIONS, ...(c.opts ?? {}) });
+
+/** Foundry-like stub of a character created on the site: what the cards and the store's check read. */
+export function stubActor(name: string, classes: { name: string; level: number }[], race: string): FActor {
+  return {
+    name, type: 'character', system: { abilities: {}, details: {} }, effects: [], sysVersion: null,
+    items: [
+      ...classes.map((c, i) => ({ _id: `cls${i}`, name: c.name, type: 'class', system: { levels: c.level } })),
+      ...(race.trim() ? [{ _id: 'race', name: race.trim(), type: 'race', system: {} }] : []),
+    ],
+  };
+}
+
+/** A new character without a Foundry file. */
+export function createManualCharacter(name: string): Character {
+  const now = Date.now();
+  const c: Character = {
+    id: newId(), name, actor: stubActor(name, [], ''), manual: emptyManual(), file: '', imported: now, opts: { ...DEFAULT_OPTIONS },
+    notes: {}, skills: {}, always: {}, hiddenRes: [], created: now, updated: now,
+  };
+  store.add(c);
+  return c;
+}
 
 export function createCharacter(actor: FActor, file: string): Character {
   const now = Date.now();
