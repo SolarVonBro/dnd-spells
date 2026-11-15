@@ -29,6 +29,14 @@ interface Route {
   listId: string | null;
 }
 
+/** Sections of the site menu in the header. */
+type Section = 'spells' | 'lists' | 'chars';
+const SECTIONS: { id: Section; label: string; icon: string; hash: string; title: string }[] = [
+  { id: 'spells', label: 'Заклинания', icon: 'spark', hash: '#/', title: 'Книга заклинаний' },
+  { id: 'lists', label: 'Списки', icon: 'book', hash: '#/@lists', title: 'Списки заклинаний' },
+  { id: 'chars', label: 'Персонажи', icon: 'person', hash: '#/@chars', title: 'Листы персонажей' },
+];
+
 function parseHash(): Route {
   const [a, b] = decodeURIComponent(location.hash.replace(/^#\/?/, '')).split('/');
   if (a === '@lists') return { id: null, view: 'official', page: 'lists', listId: null };
@@ -143,6 +151,8 @@ export function App() {
   // Picking spells for a character list: the spell list gets add/remove toggles and its own filters.
   const [picker, setPicker] = useState<{ listId: string; cls: string } | null>(null);
   const [pickFilters, setPickFilters] = useState<Filters>(EMPTY_FILTERS);
+  // The list or character page a spell card was opened from: the card shows a way back to it.
+  const [origin, setOrigin] = useState<{ hash: string; label: string } | null>(null);
 
   useEffect(() => { void loadLists(); void loadCharacters(); }, []);
 
@@ -166,6 +176,17 @@ export function App() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
 
+  // Picking lives on the page of its list (and in the spell cards opened from there); leaving it ends the picking.
+  const pk = picker && ((route.page === 'list' && route.listId === picker.listId) || (route.page === 'main' && route.id)) ? picker : null;
+  useEffect(() => { if (picker && !pk) setPicker(null); }, [picker, pk]);
+  useEffect(() => { if (route.page !== 'main' || !route.id) setOrigin(null); }, [route]);
+  // The spell browser (search, filters, the list of spells) is the "Заклинания" page and the picking mode of a list.
+  const browser = route.page === 'main' || Boolean(pk);
+  const section: Section = pk || route.page === 'lists' || route.page === 'list' ? 'lists' : route.page === 'main' ? 'spells' : 'chars';
+  useEffect(() => {
+    document.title = section === 'spells' ? 'Книга заклинаний' : `${SECTIONS.find((x) => x.id === section)!.title} — Книга заклинаний`;
+  }, [section]);
+
   const records = useMemo(() => (data ? buildRecords(data) : []), [data]);
   const recordMap = useMemo(() => new Map(records.map((r) => [r.id, r])), [records]);
   const ctx = useMemo(() => (data ? filterContext(data) : { noList: new Set<string>(), llDocLists: new Set<string>() }), [data]);
@@ -174,17 +195,17 @@ export function App() {
     data?.spells.forEach((s) => s.subclasses.forEach((id) => m.set(id, (m.get(id) ?? 0) + 1)));
     return m;
   }, [data]);
-  const active = picker ? pickFilters : filters;
+  const active = pk ? pickFilters : filters;
   const matches = useMemo(() => filterRecords(records, active, ctx, lang), [records, active, ctx, lang]);
   const selected = route.id ? recordMap.get(route.id) ?? null : null;
   const routeBook = route.page === 'list' && route.listId ? lists.find((b) => b.id === route.listId) ?? null : null;
   const routeChar = route.page === 'char' && route.listId ? chars.find((c) => c.id === route.listId) ?? null : null;
-  const pickBook = picker ? lists.find((b) => b.id === picker.listId) ?? null : null;
-  const pickClass = picker && pickBook ? pickBook.classes.find((c) => c.cls === picker.cls) ?? null : null;
-  useEffect(() => { if (picker && listsReady() && !pickClass) setPicker(null); }, [picker, pickClass]);
+  const pickBook = pk ? lists.find((b) => b.id === pk.listId) ?? null : null;
+  const pickClass = pk && pickBook ? pickBook.classes.find((c) => c.cls === pk.cls) ?? null : null;
+  useEffect(() => { if (pk && listsReady() && !pickClass) setPicker(null); }, [pk, pickClass]);
 
   const setFilters = (f: Filters) => { setFiltersState(f); store.set('dnd.filters.v2', { ...f, q: '' }); };
-  const setActive = (f: Filters) => (picker ? setPickFilters(f) : setFilters(f));
+  const setActive = (f: Filters) => (pk ? setPickFilters(f) : setFilters(f));
   const setLang = (l: Lang) => { setLangState(l); setSpellLang({}); store.set('dnd.lang', l); };
   const setLayout = (l: Layout) => { setLayoutState(l); store.set('dnd.layout', l); listRef.current?.scrollTo({ top: 0 }); };
 
@@ -197,7 +218,17 @@ export function App() {
   /** Back to where the user came from (or to the parent page when this page was opened directly). */
   const back = (parent: string) => { if (pushed.current > 0) history.back(); else go(parent, true); };
   const open = (id: string, view: View = 'official') => go(`#/${encodeURIComponent(id)}${view === 'official' ? '' : `/${view}`}`, Boolean(route.id));
-  const close = () => back('');
+  /** A spell from a list or a character sheet: the card leads back to that page. */
+  const openFrom = (label: string) => (id: string, ll: boolean) => {
+    setOrigin({ hash: location.hash, label });
+    open(id, ll && recordMap.get(id)?.official ? 'll' : 'official');
+  };
+  const backTo = pk && pickBook ? { hash: listHash(pk.listId), label: `К списку «${pickBook.name || 'Без названия'}»` } : origin;
+  const close = () => back(backTo?.hash ?? '');
+  const navTo = (s: Section) => {
+    if (s === 'spells' && route.page === 'main' && !route.id) return;
+    go(SECTIONS.find((x) => x.id === s)!.hash);
+  };
 
   const startPick = (book: SpellBook, cls: string) => {
     const c = book.classes.find((x) => x.cls === cls);
@@ -214,13 +245,13 @@ export function App() {
     listRef.current?.scrollTo({ top: 0 });
   };
   const finishPick = () => {
-    const id = picker?.listId;
+    const id = pk?.listId;
     setPicker(null);
     if (id && route.listId !== id) go(listHash(id));
   };
-  const pick: Picker | null = pickBook && picker ? {
+  const pick: Picker | null = pickBook && pk ? {
     has: (m: Match) => hasSpell(pickBook, m.record.id, m.version.homebrew ? 'l' : 'o'),
-    toggle: (m: Match) => toggleSpell(pickBook.id, { id: m.record.id, v: m.version.homebrew ? 'l' : 'o', by: picker.cls }),
+    toggle: (m: Match) => toggleSpell(pickBook.id, { id: m.record.id, v: m.version.homebrew ? 'l' : 'o', by: pk.cls }),
   } : null;
 
   useEffect(() => {
@@ -234,10 +265,10 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  // Character sheets are pages of their own: the whole width, no spell list, search and filters.
-  const fullPage = !selected && (route.page === 'chars' || route.page === 'char');
-  // Phones: the spell card and the list pages are a full-screen layer over the spell list (hidden while picking).
-  const layer = !fullPage && (Boolean(selected) || (route.page !== 'main' && !picker));
+  // Lists and character sheets are pages of their own: the whole width, no spell list, search and filters.
+  const fullPage = !browser;
+  // Phones: the spell card is a full-screen layer over the spell list.
+  const layer = browser && Boolean(selected);
   useEffect(() => {
     document.body.classList.toggle('layer-open', layer);
   }, [layer]);
@@ -252,43 +283,53 @@ export function App() {
   const count = activeFilterCount(active);
   const pickInfo = pickClass ? casterFor(data, pickClass).info : null;
   const pickMax = pickInfo && pickClass ? classLimits(pickInfo, pickClass).maxLevel : null;
-  const pickCount = pickBook && picker ? pickBook.spells.filter((s) => s.by === picker.cls).length : 0;
+  const pickCount = pickBook && pk ? pickBook.spells.filter((s) => s.by === pk.cls).length : 0;
+  const badge: Record<Section, number> = { spells: 0, lists: lists.length, chars: chars.length };
 
   return (
-    <div class={`app${layer ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}${tiles && !fullPage ? ' layout-tiles' : ''}${fullPage ? ' full-page' : ''}`}>
-      <header class="topbar">
-        <a class="brand" href="#" onClick={(e) => { e.preventDefault(); go(''); }} aria-label="Книга заклинаний">
-          <span class="sigil" aria-hidden="true">✦</span><span class="brand-name">Книга заклинаний</span>
-        </a>
-        {!fullPage && <div class="search">
-          <Icon name="search" size={18} />
-          <input ref={searchRef} type="search" placeholder="Поиск по названию (EN / RU)" value={active.q} aria-label="Поиск"
-            onInput={(e) => {
-              const q = (e.target as HTMLInputElement).value;
-              if (picker) setPickFilters({ ...pickFilters, q }); else setFiltersState({ ...filters, q });
-              listRef.current?.scrollTo({ top: 0 });
-            }} />
-        </div>}
-        <button type="button" class={`btn lists-btn${route.page === 'lists' || route.page === 'list' ? ' on' : ''}`} title="Мои списки заклинаний" aria-label="Мои списки заклинаний"
-          onClick={() => go('#/@lists', route.page === 'lists')}>
-          <Icon name="book" size={18} /><span class="lbl">Мои списки</span>{lists.length > 0 && <span class="badge">{lists.length}</span>}
-        </button>
-        <button type="button" class={`btn lists-btn chars-btn${route.page === 'chars' || route.page === 'char' ? ' on' : ''}`} title="Листы персонажей" aria-label="Листы персонажей"
-          onClick={() => go('#/@chars', route.page === 'chars')}>
-          <Icon name="person" size={18} /><span class="lbl">Персонажи</span>{chars.length > 0 && <span class="badge">{chars.length}</span>}
-        </button>
-        {wide && !fullPage && (
-          <Segmented label="Вид списка заклинаний" value={layout} onChange={setLayout}
-            options={[{ value: 'list', label: 'Список', title: 'Список слева, карточка справа' }, { value: 'tiles', label: 'Плитки', title: 'Плитки по уровням, карточка справа' }]} />
+    <div class={`app${layer ? ' has-detail' : ''}${selected && route.view === 'compare' ? ' comparing' : ''}${tiles && browser ? ' layout-tiles' : ''}${fullPage ? ' full-page' : ''}`}>
+      <div class="top">
+        <header class="sitebar">
+          <a class="brand" href="#/" onClick={(e) => { e.preventDefault(); navTo('spells'); }} aria-label="Книга заклинаний — главная">
+            <span class="sigil" aria-hidden="true">✦</span><span class="brand-name">Книга заклинаний</span>
+          </a>
+          <nav class="nav" aria-label="Разделы сайта">
+            {SECTIONS.map((x) => (
+              <a key={x.id} href={x.hash} class={`nav-tab nav-${x.id}`} aria-current={section === x.id ? 'page' : undefined} title={x.title}
+                onClick={(e) => { e.preventDefault(); navTo(x.id); }}>
+                <Icon name={x.icon} size={18} /><span class="lbl">{x.label}</span>
+                {badge[x.id] > 0 && <span class="badge">{badge[x.id]}</span>}
+              </a>
+            ))}
+          </nav>
+          <ThemeToggle />
+        </header>
+        {browser && (
+          <div class="toolbar">
+            <div class="search">
+              <Icon name="search" size={18} />
+              <input ref={searchRef} type="search" placeholder="Поиск по названию (EN / RU)" value={active.q} aria-label="Поиск"
+                onInput={(e) => {
+                  const q = (e.target as HTMLInputElement).value;
+                  if (pk) setPickFilters({ ...pickFilters, q }); else setFiltersState({ ...filters, q });
+                  listRef.current?.scrollTo({ top: 0 });
+                }} />
+            </div>
+            <div class="tools">
+              {wide && (
+                <Segmented label="Вид списка заклинаний" value={layout} onChange={setLayout}
+                  options={[{ value: 'list', label: 'Список', title: 'Список слева, карточка справа' }, { value: 'tiles', label: 'Плитки', title: 'Плитки по уровням, карточка справа' }]} />
+              )}
+              <Segmented label="Язык заклинаний" value={lang} onChange={setLang}
+                options={[{ value: 'en', label: 'EN', title: 'Тексты на английском (оригинал)' }, { value: 'ru', label: 'RU', title: 'Тексты на русском' }]} />
+            </div>
+            <FilterBar data={data} filters={active} onChange={setActive} subclassCounts={subclassCounts} noList={ctx.noList} resultCount={matches.length} />
+          </div>
         )}
-        {!fullPage && <Segmented label="Язык заклинаний" value={lang} onChange={setLang}
-          options={[{ value: 'en', label: 'EN', title: 'Тексты на английском (оригинал)' }, { value: 'ru', label: 'RU', title: 'Тексты на русском' }]} />}
-        <ThemeToggle />
-        {!fullPage && <FilterBar data={data} filters={active} onChange={setActive} subclassCounts={subclassCounts} noList={ctx.noList} resultCount={matches.length} />}
-      </header>
+      </div>
 
-      <div class={`listcol${picker ? ' picking' : ''}`} ref={listRef}>
-        {picker && pickBook && pickClass && (
+      <div class={`listcol${pk ? ' picking' : ''}`} ref={listRef}>
+        {pk && pickBook && pickClass && (
           <div class="pick-banner" role="status">
             <div class="pick-text">
               <b>Подбор в «{pickBook.name || 'Без названия'}»</b>
@@ -314,14 +355,14 @@ export function App() {
           <SpellDetail key={selected.id} data={data} record={selected} view={route.view}
             lang={spellLang[selected.id] ?? lang}
             onLang={(l) => setSpellLang({ ...spellLang, [selected.id]: l })}
-            onView={(v) => open(selected.id, v)} onBack={close}
+            onView={(v) => open(selected.id, v)} onBack={close} backTo={backTo?.label}
             onOpenRef={(id) => open(id)} />
         ) : route.page === 'list' ? (
           routeBook ? (
             <ListEditor key={routeBook.id} data={data} book={routeBook} records={recordMap} lang={lang}
-              picking={picker?.listId === routeBook.id ? picker.cls : null}
+              picking={pk?.listId === routeBook.id ? pk.cls : null}
               onBack={() => back('#/@lists')}
-              onOpenSpell={(id, ll) => open(id, ll && recordMap.get(id)?.official ? 'll' : 'official')}
+              onOpenSpell={openFrom(`К списку «${routeBook.name || 'Без названия'}»`)}
               onPick={(cls) => startPick(routeBook, cls)} />
           ) : listsReady() ? (
             <div class="welcome">
@@ -330,12 +371,12 @@ export function App() {
             </div>
           ) : <div class="loading"><div class="spinner" aria-label="Загрузка" /></div>
         ) : route.page === 'lists' ? (
-          <ListsHome data={data} onOpen={(id) => go(listHash(id))} onBack={() => back('')} />
+          <ListsHome data={data} onOpen={(id) => go(listHash(id))} />
         ) : route.page === 'char' ? (
           routeChar ? (
             <CharacterView key={routeChar.id} data={data} ch={routeChar}
               onBack={() => back('#/@chars')}
-              onOpenSpell={(id, ll) => open(id, ll && recordMap.get(id)?.official ? 'll' : 'official')}
+              onOpenSpell={openFrom(`К листу «${routeChar.name || 'Без имени'}»`)}
               onOpenList={(id) => go(listHash(id))} />
           ) : charactersReady() ? (
             <div class="welcome">
@@ -344,8 +385,8 @@ export function App() {
             </div>
           ) : <div class="loading"><div class="spinner" aria-label="Загрузка" /></div>
         ) : route.page === 'chars' ? (
-          <CharactersHome onOpen={(id) => go(charHash(id))} onBack={() => back('')} />
-        ) : <Welcome data={data} total={records.length} onLogout={logout} onLists={() => go('#/@lists')} onChars={() => go('#/@chars')} />}
+          <CharactersHome onOpen={(id) => go(charHash(id))} />
+        ) : <Welcome data={data} total={records.length} onLogout={logout} onLists={() => navTo('lists')} onChars={() => navTo('chars')} />}
       </main>
     </div>
   );

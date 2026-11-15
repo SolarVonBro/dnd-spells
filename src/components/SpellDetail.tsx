@@ -16,6 +16,8 @@ interface Props {
   onLang: (l: Lang) => void;
   onView: (v: View) => void;
   onBack: () => void;
+  /** The page the card was opened from (a list, a character sheet): a link back to it. */
+  backTo?: string;
   onOpenRef: (id: string) => void;
 }
 
@@ -135,7 +137,7 @@ function Compare({ data, record, lang, onOpenRef }: { data: Dataset; record: Spe
   );
 }
 
-export function SpellDetail({ data, record, view, lang, onLang, onView, onBack, onOpenRef }: Props) {
+export function SpellDetail({ data, record, view, lang, onLang, onView, onBack, backTo, onOpenRef }: Props) {
   const hasAlt = record.ll?.relation === 'alt' && record.official;
   const effective: View = !hasAlt ? (record.official ? 'official' : 'll') : view;
   const v = effective === 'll' ? record.ll! : record.official ?? record.ll!;
@@ -144,8 +146,9 @@ export function SpellDetail({ data, record, view, lang, onLang, onView, onBack, 
 
   return (
     <article class={`detail${effective === 'compare' ? ' wide' : ''}`}>
+      {backTo && <button type="button" class="crumb" onClick={onBack}><Icon name="back" size={16} /> {backTo}</button>}
       <header class="detail-head">
-        <button type="button" class="icon-btn back" aria-label="Назад к списку" onClick={onBack}><Icon name="back" /></button>
+        <button type="button" class="icon-btn back" aria-label={backTo ?? 'Назад к списку'} onClick={onBack}><Icon name="back" /></button>
         <div class="title">
           <h2>{nameOf(v, lang)}</h2>
           {other && <div class="other-name">{other}</div>}

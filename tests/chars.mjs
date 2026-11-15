@@ -48,7 +48,7 @@ const clickText = (sel, text) => page.evaluate((s, t) => {
 const text = (sel) => page.$$eval(sel, (els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
 
 // Wrong files are rejected with a message.
-await page.click('.chars-btn');
+await page.click('.nav-chars');
 await page.waitForSelector('.dropzone input[type=file]');
 const bad = path.join(downloads, 'not-a-character.json');
 fs.writeFileSync(bad, JSON.stringify({ hello: 'world' }));
@@ -65,7 +65,7 @@ await shot('c1-character');
 const layout = await page.evaluate(() => ({
   list: getComputedStyle(document.querySelector('.listcol')).display,
   detail: document.querySelector('.detailcol').getBoundingClientRect().width,
-  search: Boolean(document.querySelector('.topbar .search, .filterbar')),
+  search: Boolean(document.querySelector('.toolbar, .search, .filterbar')),
   side: document.querySelector('.char-side').getBoundingClientRect().left > document.querySelector('.char-main').getBoundingClientRect().left,
 }));
 check(layout.list === 'none' && layout.detail > 1300 && !layout.search && layout.side,
@@ -172,7 +172,7 @@ await clickText('.print .seg button', 'Обычный');
 await clickText('.print .seg button', 'С описаниями');
 
 // The list of characters shows the card; re-import keeps the notes.
-await page.click('.chars-btn');
+await page.click('.nav-chars');
 await page.waitForSelector('.cards .card');
 check((await text('.cards .card'))[0].includes(actor.name), 'character card in the list');
 await page.click('.cards .card');
@@ -191,7 +191,7 @@ feat.system.description.value = '<x1><x2><x3><x4><x5><x6><img src=x onerror="win
   + '<script>window.__xss=4</script><p onclick="window.__xss=5">текст</p><a href="javascript:window.__xss=6">ссылка</a>';
 const evilFile = path.join(downloads, 'evil-actor.json');
 fs.writeFileSync(evilFile, JSON.stringify(evil));
-await page.click('.chars-btn');
+await page.click('.nav-chars');
 await page.waitForSelector('.dropzone input[type=file]');
 await (await page.$('.dropzone input[type=file]')).uploadFile(evilFile);
 await page.waitForSelector('.char .stat-row', { timeout: 10000 });

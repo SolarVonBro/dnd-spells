@@ -38,7 +38,7 @@ const sheetsWord = (n: number) => plural(n, 'лист', 'листа', 'лист�
 
 /* ---------------- all characters ---------------- */
 
-export function CharactersHome({ onOpen, onBack }: { onOpen: (id: string) => void; onBack: () => void }) {
+export function CharactersHome({ onOpen }: { onOpen: (id: string) => void }) {
   const chars = useCharacters();
   const [msg, setMsg] = useState<{ text: string; err: boolean } | null>(null);
   const [drag, setDrag] = useState(false);
@@ -63,9 +63,8 @@ export function CharactersHome({ onOpen, onBack }: { onOpen: (id: string) => voi
   };
   const sorted = [...chars].sort((a, b) => b.updated - a.updated);
   return (
-    <section class="detail lists chars">
+    <section class="detail lists chars home">
       <header class="detail-head">
-        <button type="button" class="icon-btn back" aria-label="Назад" onClick={onBack}><Icon name="back" /></button>
         <div class="title">
           <h2>Листы персонажей</h2>
           <div class="subtitle">Персонажи из Foundry VTT → лист D&amp;D 5e для печати</div>

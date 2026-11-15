@@ -59,13 +59,28 @@ check(chips.includes("Player's Handbook") && chips.includes("Xanathar's") && !ch
   `source chips in English (${chips.slice(0, 4).join(', ')}…)`);
 await page.keyboard.press('Escape');
 
+// The site menu: sections are pages of their own.
+const nav = () => page.evaluate(() => ({
+  current: document.querySelector('.nav-tab[aria-current=page]')?.className.match(/nav-(spells|lists|chars)/)?.[1] ?? null,
+  list: getComputedStyle(document.querySelector('.listcol')).display,
+  toolbar: Boolean(document.querySelector('.toolbar')),
+  title: document.title,
+}));
+let n = await nav();
+check(n.current === 'spells' && n.list !== 'none' && n.toolbar, `spells page: menu "${n.current}", spell list and toolbar shown`);
+
 // Create a list: Wizard 5.
-await page.click('.lists-btn');
+await page.click('.nav-lists');
 await page.waitForSelector('.newlist input');
+n = await nav();
+check(n.current === 'lists' && n.list === 'none' && !n.toolbar && !(await page.$('.home .back')) && n.title.startsWith('Списки'),
+  `lists page of its own: menu "${n.current}", no spell list or toolbar, title "${n.title}"`);
 await page.type('.newlist input', 'Тест: Элара');
 await page.click('.newlist button[type=submit]');
 await page.waitForSelector('.name-input');
 check((await page.$eval('.name-input', (e) => e.value)) === 'Тест: Элара', 'list created and opened');
+n = await nav();
+check(n.current === 'lists' && n.list === 'none' && !n.toolbar, 'list editor is a full page');
 await clickText('.classes-edit .btn', 'Выбрать класс');
 await page.waitForSelector('.crow select');
 check((await page.$eval('.crow select', (e) => e.value)) === 'Wizard', 'first class defaults to Wizard');
@@ -81,6 +96,9 @@ check(meters.some((m) => m.includes('0 / 4') && m.includes('заговор')) &&
 // Pick spells for the Wizard.
 await clickText('.ccard .btn', 'Подобрать');
 await page.waitForSelector('.pick-banner');
+n = await nav();
+check(n.current === 'lists' && n.list !== 'none' && n.toolbar && Boolean(await page.$('.detailcol .name-input')),
+  'picking: spell catalogue on the left, the list editor beside it, menu stays on "lists"');
 const levels = await page.$$eval('.list .row .lvl', (l) => [...new Set(l.map((x) => Number(x.textContent)))]);
 check(levels.length > 0 && Math.max(...levels) <= 3, `picker shows Wizard spells up to level 3 (levels ${levels.join(',')})`);
 await shot('l1-picker');
@@ -92,9 +110,28 @@ for (const li of lvl1) {
 }
 await tick();
 check((await page.$eval('.pick-banner', (e) => e.textContent)).includes('выбрано 3'), 'three spells picked');
+// A spell card opened while picking leads back to the list; picking goes on.
+await page.$eval('.list .row', (e) => e.click()); // (the top rows can be under the sticky headers)
+await page.waitForSelector('.detail h2');
+check((await page.$eval('.crumb', (e) => e.textContent).catch(() => '')).includes('Тест: Элара') && Boolean(await page.$('.pick-banner')),
+  'picking: spell card with a link back to the list');
+await page.click('.crumb');
+await page.waitForSelector('.detailcol .name-input');
+check(Boolean(await page.$('.pick-banner')), 'back from the card: the list editor, still picking');
 await clickText('.pick-banner .btn', 'Готово');
 await page.waitForSelector('.lspells .lrow');
 check((await page.$$('.lspells .lrow')).length === 3, 'list shows the picked spells');
+n = await nav();
+check(n.list === 'none' && !n.toolbar, 'after picking the list is a full page again');
+// A spell opened from the list: the card in the catalogue, a link back to the list.
+await page.click('.lspells .lrow-main');
+await page.waitForSelector('.detail h2');
+n = await nav();
+check(n.current === 'spells' && (await page.$eval('.crumb', (e) => e.textContent).catch(() => '')).includes('К списку «Тест: Элара»'),
+  `spell from the list: menu "${n.current}", link back to the list`);
+await page.click('.crumb');
+await page.waitForSelector('.name-input');
+check((await page.$eval('.name-input', (e) => e.value)) === 'Тест: Элара', 'back to the list from the spell card');
 
 // Multiclass: + Cleric 2 -> caster level 7 -> 4/3/3/1.
 await clickText('.classes-edit .btn', 'Добавить класс');
@@ -167,7 +204,9 @@ const shortPdf = await exportPdf('Таблица');
 await shot('l3-export');
 
 // Desktop: tiles layout (spells grouped by level, the card takes the rest of the screen).
-await clickText('.topbar .seg button', 'Плитки');
+await page.click('.nav-spells');
+await page.waitForSelector('.toolbar .seg');
+await clickText('.toolbar .seg button', 'Плитки');
 await page.waitForSelector('.tiles .tile');
 const tileCount = await page.$$eval('.tiles .tile', (t) => t.length);
 const listed = Number((await page.$eval('.list-status span', (e) => e.textContent)).match(/\d+/)[0]);
@@ -181,15 +220,21 @@ await shot('l3b-tiles');
 await page.reload({ waitUntil: 'networkidle0' });
 await page.waitForSelector('.tiles .tile', { timeout: 60000 });
 check(true, 'tiles layout is remembered after reload');
-await clickText('.topbar .seg button', 'Список');
+await clickText('.toolbar .seg button', 'Список');
 await page.waitForSelector('.list .row');
 
-// Phone layout: lists page is a full-screen layer; picking shows the spell list.
+// Phone layout: lists are a page under the menu; picking shows the spell list.
 // (switching to a mobile viewport reloads the page)
 await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
 await page.goto(`${url.replace(/#.*$/, '')}#/@lists`, { waitUntil: 'networkidle0' });
 await page.reload({ waitUntil: 'networkidle0' });
 await page.waitForSelector('.cards .card', { timeout: 60000 });
+const phoneNav = await page.evaluate(() => ({
+  tabs: [...document.querySelectorAll('.nav-tab')].map((t) => t.getBoundingClientRect()).map((r) => [Math.round(r.left), Math.round(r.right)]),
+  wide: document.documentElement.scrollWidth <= window.innerWidth + 1,
+  labels: [...document.querySelectorAll('.nav-tab .lbl')].every((l) => l.scrollWidth <= l.clientWidth + 1),
+}));
+check(phoneNav.tabs.length === 3 && phoneNav.wide && phoneNav.labels, `phone: menu fits the screen, labels not cut (${JSON.stringify(phoneNav.tabs)})`);
 await shot('l4-phone-lists');
 await page.click('.cards .card');
 await page.waitForSelector('.ccard .btn');

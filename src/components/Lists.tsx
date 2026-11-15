@@ -15,7 +15,7 @@ const spellsWord = (n: number) => plural(n, 'заклинание', 'закли�
 
 /* ---------------- all lists ---------------- */
 
-export function ListsHome({ data, onOpen, onBack }: { data: Dataset; onOpen: (id: string) => void; onBack: () => void }) {
+export function ListsHome({ data, onOpen }: { data: Dataset; onOpen: (id: string) => void }) {
   const lists = useLists();
   const [name, setName] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
@@ -28,9 +28,8 @@ export function ListsHome({ data, onOpen, onBack }: { data: Dataset; onOpen: (id
   };
   const sorted = [...lists].sort((a, b) => b.updated - a.updated);
   return (
-    <section class="detail lists">
+    <section class="detail lists home">
       <header class="detail-head">
-        <button type="button" class="icon-btn back" aria-label="Назад" onClick={onBack}><Icon name="back" /></button>
         <div class="title">
           <h2>Мои списки заклинаний</h2>
           <div class="subtitle">Для персонажей: класс, уровень, ячейки и выбранные заклинания</div>
@@ -346,7 +345,7 @@ export function ListEditor({ data, book, records, lang, picking, onBack, onOpenS
       {items.length === 0 && (
         <p class="empty-note">
           {book.classes.length
-            ? 'Нажмите «Подобрать заклинания» у класса — в списке слева появятся подходящие заклинания с кнопками добавления. Ещё можно добавить заклинание из его карточки кнопкой «В список».'
+            ? 'Нажмите «Подобрать заклинания» у класса — откроется каталог с подходящими заклинаниями и кнопками добавления. Ещё можно добавить заклинание из его карточки в разделе «Заклинания» кнопкой «В список».'
             : 'Сначала выберите класс.'}
         </p>
       )}
